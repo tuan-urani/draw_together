@@ -1,0 +1,121 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "command": "fvm",
+      "args": [
+        "flutter",
+        "pub",
+        "run",
+        "build_runner",
+        "test"
+      ],
+      "problemMatcher": [
+        "$dart-build_runner"
+      ],
+      "group": "test",
+      "label": "flutter: flutter pub run build_runner test",
+      "detail": ""
+    },
+    {
+      "type": "shell",
+      "command": "fvm",
+      "args": [
+        "flutter",
+        "run",
+        "--flavor",
+        "staging",
+        "--dart-define=FLAVOR=staging"
+      ],
+      "problemMatcher": [
+        "$dart-flutter"
+      ],
+      "group": "build",
+      "label": "flutter run staging",
+      "detail": "Run staging flavor"
+    },
+    {
+      "type": "shell",
+      "command": "fvm",
+      "args": [
+        "flutter",
+        "run",
+        "--flavor",
+        "prod",
+        "--dart-define=FLAVOR=prod"
+      ],
+      "problemMatcher": [
+        "$dart-flutter"
+      ],
+      "group": "build",
+      "label": "flutter run prod",
+      "detail": "Run prod flavor"
+    },
+    {
+      "type": "shell",
+      "command": "fvm",
+      "args": [
+        "dart",
+        "run",
+        "tool/generate_model_registry.dart"
+      ],
+      "group": "build",
+      "label": "spec: generate model registry",
+      "detail": "Generate spec/model-registry.md"
+    },
+    {
+      "type": "shell",
+      "command": "fvm",
+      "args": [
+        "dart",
+        "run",
+        "tool/generate_ui_workflow_spec.dart"
+      ],
+      "group": "build",
+      "label": "spec: generate ui workflow",
+      "detail": "Generate spec/ui-workflow.md"
+    },
+    {
+      "type": "shell",
+      "command": "fvm",
+      "args": [
+        "dart",
+        "run",
+        "tool/update_specs.dart"
+      ],
+      "group": "build",
+      "label": "spec: update all specs",
+      "detail": "Run both generators"
+    },
+    {
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "tools/jsx2flutter/convert.mjs"
+      ],
+      "group": "build",
+      "label": "jsx2flutter: help",
+      "detail": "Show converter usage"
+    },
+    {
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "tools/jsx2flutter/convert.mjs",
+        "${input:jsx2flutterFolder}"
+      ],
+      "group": "build",
+      "label": "jsx2flutter: convert folder",
+      "detail": "Convert index.jsx + index.module.scss from a folder"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "jsx2flutterFolder",
+      "type": "promptString",
+      "description": "Folder containing index.jsx and index.module.scss",
+      "default": ".figma/399_27379"
+    }
+  ]
+}

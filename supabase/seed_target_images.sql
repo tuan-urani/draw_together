@@ -1,0 +1,83 @@
+insert into public.target_images (
+  id,
+  storage_path,
+  title,
+  mode,
+  difficulty,
+  width,
+  height,
+  mime_type,
+  checksum,
+  active
+)
+values
+  (
+    'cat_001',
+    'easy/cat_001.png',
+    'Cat',
+    'versus',
+    'easy',
+    1024,
+    1024,
+    'image/png',
+    'ec0129cbd02cc6243959be202051811ffdf27e2906d4ad9d146eeb40b10103dd',
+    true
+  ),
+  (
+    'house_001',
+    'easy/house_001.png',
+    'House',
+    'versus',
+    'easy',
+    1024,
+    1024,
+    'image/png',
+    '6f27176e4eaab36e3b2068f53d3db3667940228a7394b95fafeb23d1fb3e6dca',
+    true
+  ),
+  (
+    'rocket_001',
+    'easy/rocket_001.png',
+    'Rocket',
+    'versus',
+    'easy',
+    1024,
+    1024,
+    'image/png',
+    '7830c47e36ad73ac94ea424c22f1f3d5d6a5d2fc06c7c4b2a77fd729ad69bc3e',
+    true
+  ),
+  (
+    'robot_001',
+    'medium/robot_001.png',
+    'Robot',
+    'versus',
+    'medium',
+    1024,
+    1024,
+    'image/png',
+    'e20a90a7aa1c69f20461e83ef6ba17496fd7126b86e80684ca692b2dd93c211d',
+    true
+  ),
+  (
+    'house_duo_001',
+    'coop/easy/house_duo_001.png',
+    'House Duo',
+    'coop',
+    'easy',
+    1024,
+    1024,
+    'image/png',
+    '718f0500a9bf24f7abeb4b97f9c064d748553287c1bd4ed0394e22a6fcb253fc',
+    true
+  )
+on conflict (id) do update set
+  storage_path = excluded.storage_path,
+  title = excluded.title,
+  mode = excluded.mode,
+  difficulty = excluded.difficulty,
+  width = excluded.width,
+  height = excluded.height,
+  mime_type = excluded.mime_type,
+  checksum = excluded.checksum,
+  active = excluded.active;
