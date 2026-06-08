@@ -28,6 +28,8 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
   late final RoomLobbyBloc _bloc;
   late final String _roomId;
   String? _enteredRoundId;
+  bool _isLeavingRoom = false;
+  bool _handledRoomEnd = false;
 
   @override
   void initState() {
@@ -49,119 +51,143 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(AppAssets.lobbyRoomPng),
-            fit: BoxFit.cover,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _handleBack();
+        }
+      },
+      child: Scaffold(
+        body: DecoratedBox(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage(AppAssets.lobbyBackgroundPng),
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: BlocConsumer<RoomLobbyBloc, RoomLobbyState>(
-            bloc: _bloc,
-            listener: (context, state) {
-              final errorMessage = state.errorMessage;
-              if (errorMessage != null && errorMessage.isNotEmpty) {
-                showErrorToast(errorMessage);
-              }
+          child: SafeArea(
+            child: BlocConsumer<RoomLobbyBloc, RoomLobbyState>(
+              bloc: _bloc,
+              listener: (context, state) {
+                final errorMessage = state.errorMessage;
+                if (errorMessage != null && errorMessage.isNotEmpty) {
+                  showErrorToast(errorMessage);
+                }
 
-              final activeRound = state.activeRound;
-              if (activeRound != null &&
-                  state.remainingMs > 0 &&
-                  _enteredRoundId != activeRound.id) {
-                _enteredRoundId = activeRound.id;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
+                final roomEndMessage = state.roomEndMessage;
+                if (!_handledRoomEnd &&
+                    roomEndMessage != null &&
+                    roomEndMessage.isNotEmpty) {
+                  _handledRoomEnd = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _showRoomEndedDialog(state.room?.mode);
+                  });
+                }
 
-                  Get.toNamed(
-                    AppPages.drawingBoard,
-                    arguments: {'roomId': activeRound.roomId},
+                final activeRound = state.activeRound;
+                if (activeRound != null &&
+                    state.remainingMs > 0 &&
+                    _enteredRoundId != activeRound.id) {
+                  _enteredRoundId = activeRound.id;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+
+                    Get.toNamed(
+                      AppPages.drawingBoard,
+                      arguments: {'roomId': activeRound.roomId},
+                    );
+                  });
+                }
+              },
+              builder: (context, state) {
+                if (_roomId.isEmpty) {
+                  return Center(child: Text(LocaleKey.roomNotFound.tr));
+                }
+
+                if (state.pageState == PageState.loading &&
+                    state.room == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final room = state.room;
+                if (room == null) {
+                  return Center(
+                    child: PlayfulGradientButton(
+                      title: LocaleKey.retry.tr,
+                      onTap: () => _bloc.loadRoom(_roomId),
+                    ),
                   );
-                });
-              }
-            },
-            builder: (context, state) {
-              if (_roomId.isEmpty) {
-                return Center(child: Text(LocaleKey.roomNotFound.tr));
-              }
+                }
 
-              if (state.pageState == PageState.loading && state.room == null) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final room = state.room;
-              if (room == null) {
-                return Center(
-                  child: PlayfulGradientButton(
-                    title: LocaleKey.retry.tr,
-                    onTap: () => _bloc.loadRoom(_roomId),
+                return RefreshIndicator(
+                  onRefresh: () => _bloc.loadRoom(_roomId),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 36),
+                    children: [
+                      _LobbyHeader(onBack: _handleBack),
+                      12.height,
+                      _RoomSummaryCard(room: room),
+                      32.height,
+                      _PlayersTitle(count: state.players.length),
+                      16.height,
+                      _PlayersCard(
+                        firstPlayer: _playerAtSeat(state.players, 1),
+                        firstPresence: _presenceAtSeat(state.presences, 1),
+                        secondPlayer: _playerAtSeat(state.players, 2),
+                        secondPresence: _presenceAtSeat(state.presences, 2),
+                      ),
+                      30.height,
+                      if (state.activeRound != null) ...[
+                        _RoundStatusCard(
+                          targetTitle:
+                              state.target?.title ??
+                              state.activeRound!.targetImageId,
+                          targetUrl: state.targetUrl,
+                          remainingMs: state.remainingMs,
+                          onEnter: () {
+                            Get.toNamed(
+                              AppPages.drawingBoard,
+                              arguments: {'roomId': room.id},
+                            );
+                          },
+                        ),
+                        12.height,
+                      ] else ...[
+                        // _LobbyNoticeCard(
+                        //   canStartRound: state.canStartRound,
+                        //   isStartingRound: state.isStartingRound,
+                        //   helperText: _startHelperText(state),
+                        //   onStart: _bloc.startRound,
+                        // ),
+                        if (state.hasTwoPlayers) ...[
+                          24.height,
+                          if (state.isHost)
+                            _LobbyPrimaryButton(
+                              title: state.isStartingRound
+                                  ? LocaleKey.startingRound.tr
+                                  : LocaleKey.startRound.tr,
+                              icon: Icons.play_arrow_rounded,
+                              onTap: state.canStartRound
+                                  ? _bloc.startRound
+                                  : null,
+                            )
+                          else
+                            _LobbyPrimaryButton(
+                              title: state.isReady
+                                  ? LocaleKey.ready.tr
+                                  : LocaleKey.markReady.tr,
+                              icon: Icons.send_rounded,
+                              onTap: () => _bloc.setReady(!state.isReady),
+                            ),
+                        ],
+                      ],
+                    ],
                   ),
                 );
-              }
-
-              return RefreshIndicator(
-                onRefresh: () => _bloc.loadRoom(_roomId),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
-                  children: [
-                    _LobbyHeader(onBack: Get.back<void>),
-                    44.height,
-                    _RoomSummaryCard(room: room),
-                    28.height,
-                    _PlayersTitle(count: state.players.length),
-                    14.height,
-                    _PlayersCard(
-                      firstPlayer: _playerAtSeat(state.players, 1),
-                      firstPresence: _presenceAtSeat(state.presences, 1),
-                      secondPlayer: _playerAtSeat(state.players, 2),
-                      secondPresence: _presenceAtSeat(state.presences, 2),
-                    ),
-                    26.height,
-                    if (state.activeRound != null) ...[
-                      _RoundStatusCard(
-                        targetTitle:
-                            state.target?.title ??
-                            state.activeRound!.targetImageId,
-                        targetUrl: state.targetUrl,
-                        remainingMs: state.remainingMs,
-                        onEnter: () {
-                          Get.toNamed(
-                            AppPages.drawingBoard,
-                            arguments: {'roomId': room.id},
-                          );
-                        },
-                      ),
-                      12.height,
-                    ] else ...[
-                      _LobbyNoticeCard(
-                        isHost: state.isHost,
-                        canStartRound: state.canStartRound,
-                        isStartingRound: state.isStartingRound,
-                        helperText: _startHelperText(state),
-                        onStart: _bloc.startRound,
-                      ),
-                      28.height,
-                    ],
-                    _LobbyPrimaryButton(
-                      title: state.canStartRound
-                          ? (state.isStartingRound
-                                ? LocaleKey.startingRound.tr
-                                : LocaleKey.startRound.tr)
-                          : (state.isReady
-                                ? LocaleKey.ready.tr
-                                : LocaleKey.markReady.tr),
-                      icon: state.canStartRound
-                          ? Icons.play_arrow_rounded
-                          : Icons.send_rounded,
-                      onTap: state.canStartRound
-                          ? _bloc.startRound
-                          : () => _bloc.setReady(!state.isReady),
-                    ),
-                  ],
-                ),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
@@ -182,11 +208,51 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
     return null;
   }
 
+  // ignore: unused_element
   String _startHelperText(RoomLobbyState state) {
     if (!state.isHost) return LocaleKey.waitingForHost.tr;
     if (!state.hasTwoPlayers) return LocaleKey.needTwoPlayers.tr;
     if (!state.allPlayersReady) return LocaleKey.waitingForReady.tr;
     return LocaleKey.readyToStart.tr;
+  }
+
+  Future<void> _handleBack() async {
+    if (_isLeavingRoom) return;
+    _isLeavingRoom = true;
+
+    final mode = _bloc.state.room?.mode ?? RoomMode.coop;
+    await _bloc.leaveRoomFromBack();
+    if (!mounted) return;
+    _goToRoomBrowser(mode);
+  }
+
+  Future<void> _showRoomEndedDialog(RoomMode? mode) async {
+    await Get.dialog<void>(
+      AlertDialog(
+        title: Text(LocaleKey.roomClosed.tr),
+        content: Text(LocaleKey.hostLeftRoom.tr),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back<void>(),
+            child: Text(LocaleKey.ok.tr),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+
+    if (!mounted) return;
+    _goToRoomBrowser(mode ?? RoomMode.coop);
+  }
+
+  void _goToRoomBrowser(RoomMode mode) {
+    Get.offNamedUntil(
+      AppPages.roomBrowser,
+      (route) =>
+          route.settings.name == AppPages.home ||
+          route.settings.name == AppPages.main,
+      arguments: {'mode': mode},
+    );
   }
 }
 
@@ -197,38 +263,32 @@ class _LobbyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _CircleActionButton(
-          icon: Icons.arrow_back_ios_new_rounded,
-          onTap: onBack,
-        ),
-        20.width,
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                LocaleKey.roomLobby.tr,
-                style: AppStyles.h1(
-                  color: PlayfulColors.ink,
-                  fontWeight: FontWeight.w900,
-                  height: 1.08,
-                ),
+    return SizedBox(
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            right: -36,
+            top: -8,
+            width: 144,
+            height: 96,
+            child: IgnorePointer(
+              child: Image.asset(
+                AppAssets.lobbyGameStickerPng,
+                fit: BoxFit.contain,
               ),
-              6.height,
-              Text(
-                'Invite friends with room code',
-                style: AppStyles.bodyLarge(
-                  color: PlayfulColors.muted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _CircleActionButton(
+              icon: Icons.arrow_back_ios_new_rounded,
+              onTap: onBack,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -250,9 +310,9 @@ class _CircleActionButton extends StatelessWidget {
           boxShadow: _lobbyShadow,
         ),
         child: SizedBox(
-          width: 56,
-          height: 56,
-          child: Icon(icon, color: PlayfulColors.ink, size: 24),
+          width: 54,
+          height: 54,
+          child: Icon(icon, color: PlayfulColors.lobbyPurple, size: 24),
         ),
       ),
     );
@@ -267,8 +327,8 @@ class _RoomSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _LobbySurface(
-      radius: 28,
-      padding: const EdgeInsets.fromLTRB(22, 26, 20, 24),
+      radius: 26,
+      padding: const EdgeInsets.fromLTRB(22, 24, 18, 22),
       child: Column(
         children: [
           Row(
@@ -284,7 +344,7 @@ class _RoomSummaryCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    14.height,
+                    12.height,
                     SelectableText(
                       room.code,
                       style: AppStyles.headlineLarge(
@@ -299,36 +359,25 @@ class _RoomSummaryCard extends StatelessWidget {
               _CopyButton(code: room.code),
             ],
           ),
-          30.height,
-          const Divider(height: 1, color: Color(0xFFE1E8F3)),
           24.height,
+          const Divider(height: 1, color: PlayfulColors.lobbyDivider),
+          20.height,
           Row(
             children: [
-              const _SoftIconBox(
-                icon: Icons.games_rounded,
-                background: Color(0xFFF0DFFF),
-                color: PlayfulColors.purple,
-              ),
-              16.width,
               Expanded(
-                child: _MetricText(
+                child: _SummaryMetric(
+                  icon: Icons.group_rounded,
+                  iconBackground: PlayfulColors.lobbySoftPurple,
+                  iconColor: PlayfulColors.lobbyPurple,
                   label: LocaleKey.mode.tr,
-                  value: room.mode.label,
+                  value: _modeLabel(room.mode),
                 ),
               ),
-              const SizedBox(
-                height: 48,
-                child: VerticalDivider(width: 1, color: Color(0xFFE1E8F3)),
-              ),
-              22.width,
-              const _SoftIconBox(
-                icon: Icons.wifi_rounded,
-                background: Color(0xFFE5F8EA),
-                color: PlayfulColors.green,
-              ),
-              16.width,
               Expanded(
-                child: _MetricText(
+                child: _SummaryMetric(
+                  icon: Icons.wifi_rounded,
+                  iconBackground: PlayfulColors.lobbySoftGreen,
+                  iconColor: PlayfulColors.green,
                   label: LocaleKey.status.tr,
                   value: _statusLabel(room.status),
                   valueColor: PlayfulColors.green,
@@ -341,8 +390,14 @@ class _RoomSummaryCard extends StatelessWidget {
     );
   }
 
+  static String _modeLabel(RoomMode mode) {
+    return mode == RoomMode.coop
+        ? LocaleKey.coopModeTitle.tr
+        : LocaleKey.soloModeTitle.tr;
+  }
+
   static String _statusLabel(RoomStatus status) {
-    if (status == RoomStatus.waiting) return 'Waiting';
+    if (status == RoomStatus.waiting) return LocaleKey.waitingStatus.tr;
     return status.value.capitalizeFirst ?? status.value;
   }
 }
@@ -362,8 +417,7 @@ class _CopyButton extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: 22.borderRadiusAll,
-          border: Border.all(color: const Color(0xFFE1E8F3)),
+          borderRadius: 20.borderRadiusAll,
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF87A6C8).withValues(alpha: 0.08),
@@ -373,22 +427,22 @@ class _CopyButton extends StatelessWidget {
           ],
         ),
         child: SizedBox(
-          width: 72,
-          height: 80,
+          width: 70,
+          height: 78,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
                 Icons.copy_rounded,
-                color: PlayfulColors.ink,
-                size: 30,
+                color: PlayfulColors.lobbyPurple,
+                size: 28,
               ),
-              8.height,
+              6.height,
               Text(
-                'Copy',
+                LocaleKey.copy.tr,
                 style: AppStyles.bodyLarge(
-                  color: PlayfulColors.muted,
-                  fontWeight: FontWeight.w700,
+                  color: PlayfulColors.lobbyPurple,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
@@ -399,29 +453,47 @@ class _CopyButton extends StatelessWidget {
   }
 }
 
-class _SoftIconBox extends StatelessWidget {
-  const _SoftIconBox({
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({
     required this.icon,
-    required this.background,
-    required this.color,
+    required this.iconBackground,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    this.valueColor = PlayfulColors.ink,
   });
 
   final IconData icon;
-  final Color background;
-  final Color color;
+  final Color iconBackground;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final Color valueColor;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: 16.borderRadiusAll,
-      ),
-      child: SizedBox(
-        width: 56,
-        height: 56,
-        child: Icon(icon, color: color, size: 32),
-      ),
+    return Row(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: iconBackground,
+            borderRadius: 15.borderRadiusAll,
+          ),
+          child: SizedBox(
+            width: 52,
+            height: 52,
+            child: Icon(icon, color: iconColor, size: 29),
+          ),
+        ),
+        12.width,
+        Expanded(
+          child: _MetricText(
+            label: label,
+            value: value,
+            valueColor: valueColor,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -435,7 +507,11 @@ class _PlayersTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.group_rounded, color: PlayfulColors.blue, size: 28),
+        const Icon(
+          Icons.group_rounded,
+          color: PlayfulColors.lobbyPurple,
+          size: 28,
+        ),
         10.width,
         Text(
           '${LocaleKey.players.tr} ($count/2)',
@@ -477,7 +553,7 @@ class _MetricText extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppStyles.h4(color: valueColor, fontWeight: FontWeight.w900),
+          style: AppStyles.h5(color: valueColor, fontWeight: FontWeight.w900),
         ),
       ],
     );
@@ -513,7 +589,7 @@ class _LobbySurface extends StatelessWidget {
 
 final List<BoxShadow> _lobbyShadow = [
   BoxShadow(
-    color: const Color(0xFF87A6C8).withValues(alpha: 0.12),
+    color: PlayfulColors.muted.withValues(alpha: 0.12),
     blurRadius: 26,
     offset: const Offset(0, 12),
   ),
@@ -559,14 +635,12 @@ class _PlayersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _LobbySurface(
-      radius: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+      radius: 24,
+      padding: const EdgeInsets.all(12),
       child: Column(
         children: [
           _PlayerRow(seat: 1, player: firstPlayer, presence: firstPresence),
-          20.height,
-          const Divider(height: 1, color: Color(0xFFE1E8F3)),
-          20.height,
+          12.height,
           _PlayerRow(seat: 2, player: secondPlayer, presence: secondPresence),
         ],
       ),
@@ -587,39 +661,79 @@ class _PlayerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWaiting = player == null;
+    final isWaiting = player == null && presence == null;
     final isOnline = presence != null;
-    final name = player?.displayName ?? LocaleKey.waitingForPlayer.tr;
+    final isReady = presence?.ready ?? false;
+    final name =
+        player?.displayName ??
+        presence?.displayName ??
+        LocaleKey.waitingForPlayer.tr;
 
-    return Row(
-      children: [
-        _SeatBadge(seat: seat, active: !isWaiting),
-        14.width,
-        isWaiting
-            ? const _WaitingAvatar()
-            : PlayfulAvatar(size: 56, online: isOnline),
-        18.width,
-        Expanded(
-          child: Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppStyles.h4(
-              color: isWaiting ? PlayfulColors.muted : PlayfulColors.ink,
-              fontWeight: FontWeight.w900,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: PlayfulColors.lobbyPlayerRow.withValues(alpha: 0.82),
+        borderRadius: 18.borderRadiusAll,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Row(
+          children: [
+            _SeatBadge(seat: seat, active: !isWaiting),
+            12.width,
+            isWaiting
+                ? const _WaitingAvatar()
+                : PlayfulAvatar(size: 52, online: isOnline),
+            14.width,
+            Expanded(
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppStyles.h4(
+                  color: isWaiting ? PlayfulColors.muted : PlayfulColors.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
-          ),
+            10.width,
+            _ReadyStatusIcon(visible: !isWaiting, ready: isReady),
+          ],
         ),
-        if (!isWaiting)
-          _OnlineLabel(
-            label: isOnline ? LocaleKey.online.tr : LocaleKey.offline.tr,
-            color: isOnline ? PlayfulColors.green : PlayfulColors.muted,
-          ),
-        if (presence?.ready ?? false) ...[
-          8.width,
-          _OnlineLabel(label: LocaleKey.ready.tr, color: PlayfulColors.blue),
-        ],
-      ],
+      ),
+    );
+  }
+}
+
+class _ReadyStatusIcon extends StatelessWidget {
+  const _ReadyStatusIcon({required this.visible, required this.ready});
+
+  final bool visible;
+  final bool ready;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!visible) return const SizedBox(width: 30, height: 30);
+
+    if (!ready) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: PlayfulColors.muted, width: 2.2),
+        ),
+        child: const SizedBox(width: 30, height: 30),
+      );
+    }
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: PlayfulColors.green,
+        shape: BoxShape.circle,
+      ),
+      child: const SizedBox(
+        width: 30,
+        height: 30,
+        child: Icon(Icons.check_rounded, color: AppColors.white, size: 22),
+      ),
     );
   }
 }
@@ -634,7 +748,8 @@ class _SeatBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: active ? PlayfulColors.blue : const Color(0xFFEAF1FB),
+        gradient: active ? PlayfulColors.coopCardGradient : null,
+        color: active ? null : PlayfulColors.lobbySeatInactive,
         borderRadius: 10.borderRadiusAll,
       ),
       child: SizedBox(
@@ -663,7 +778,7 @@ class _WaitingAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: const Color(0xFFB8C6DE),
+          color: PlayfulColors.muted.withValues(alpha: 0.45),
           width: 1.4,
           strokeAlign: BorderSide.strokeAlignInside,
         ),
@@ -681,41 +796,15 @@ class _WaitingAvatar extends StatelessWidget {
   }
 }
 
-class _OnlineLabel extends StatelessWidget {
-  const _OnlineLabel({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: const SizedBox(width: 10, height: 10),
-        ),
-        8.width,
-        Text(
-          label,
-          style: AppStyles.bodyLarge(color: color, fontWeight: FontWeight.w700),
-        ),
-      ],
-    );
-  }
-}
-
+// ignore: unused_element
 class _LobbyNoticeCard extends StatelessWidget {
   const _LobbyNoticeCard({
-    required this.isHost,
     required this.canStartRound,
     required this.isStartingRound,
     required this.helperText,
     required this.onStart,
   });
 
-  final bool isHost;
   final bool canStartRound;
   final bool isStartingRound;
   final String helperText;
@@ -726,28 +815,73 @@ class _LobbyNoticeCard extends StatelessWidget {
     return GestureDetector(
       onTap: canStartRound ? onStart : null,
       child: _LobbySurface(
-        radius: 16,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        border: Border.all(color: const Color(0xFFDCE8F8), width: 1.2),
-        child: Row(
-          children: [
-            const _AlertIcon(),
-            18.width,
-            Expanded(
-              child: Text(
-                canStartRound
-                    ? (isStartingRound
-                          ? LocaleKey.startingRound.tr
-                          : LocaleKey.readyToStart.tr)
-                    : helperText,
-                style: AppStyles.bodyLarge(
-                  color: PlayfulColors.ink,
-                  fontWeight: FontWeight.w600,
-                  height: 1.25,
+        radius: 20,
+        padding: EdgeInsets.zero,
+        border: Border.all(color: PlayfulColors.lobbyBorder, width: 1.2),
+        child: SizedBox(
+          height: 116,
+          child: Stack(
+            children: [
+              Positioned(
+                right: -12,
+                bottom: -8,
+                width: 142,
+                height: 108,
+                child: IgnorePointer(
+                  child: Image.asset(
+                    AppAssets.lobbyBottomCharactersPng,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                  ),
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 108, 18),
+                child: Row(
+                  children: [
+                    const _AlertIcon(),
+                    14.width,
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            canStartRound
+                                ? (isStartingRound
+                                      ? LocaleKey.startingRound.tr
+                                      : LocaleKey.readyToStart.tr)
+                                : helperText,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppStyles.bodyLarge(
+                              color: PlayfulColors.ink,
+                              fontWeight: FontWeight.w900,
+                              height: 1.2,
+                            ),
+                          ),
+                          if (!canStartRound &&
+                              helperText == LocaleKey.needTwoPlayers.tr) ...[
+                            5.height,
+                            Text(
+                              LocaleKey.inviteFriendToStartGame.tr,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppStyles.bodySmall(
+                                color: PlayfulColors.muted,
+                                fontWeight: FontWeight.w600,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -761,7 +895,7 @@ class _AlertIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        color: Color(0xFFFFEBC0),
+        color: PlayfulColors.lobbyWarningSoft,
         shape: BoxShape.circle,
       ),
       child: SizedBox(
@@ -770,9 +904,9 @@ class _AlertIcon extends StatelessWidget {
         child: Center(
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF5DF),
+              color: AppColors.white,
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFFFB62D), width: 2),
+              border: Border.all(color: PlayfulColors.lobbyWarning, width: 2),
             ),
             child: SizedBox(
               width: 34,
@@ -781,7 +915,7 @@ class _AlertIcon extends StatelessWidget {
                 child: Text(
                   '!',
                   style: AppStyles.h4(
-                    color: const Color(0xFFFFB62D),
+                    color: PlayfulColors.lobbyWarning,
                     fontWeight: FontWeight.w900,
                     height: 1,
                   ),
@@ -804,24 +938,29 @@ class _LobbyPrimaryButton extends StatelessWidget {
 
   final String title;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onTap != null;
     return GestureDetector(
       onTap: onTap,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF167BFF), Color(0xFF007AFF)],
-          ),
+          gradient: enabled
+              ? const LinearGradient(
+                  colors: [Color(0xFF167BFF), Color(0xFF007AFF)],
+                )
+              : null,
+          color: enabled ? null : PlayfulColors.muted.withValues(alpha: 0.28),
           borderRadius: 34.borderRadiusAll,
           boxShadow: [
-            BoxShadow(
-              color: PlayfulColors.blue.withValues(alpha: 0.22),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
+            if (enabled)
+              BoxShadow(
+                color: PlayfulColors.blue.withValues(alpha: 0.22),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
           ],
         ),
         child: SizedBox(

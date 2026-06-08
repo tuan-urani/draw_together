@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -14,6 +15,7 @@ import 'package:draw_together/src/ui/drawing/components/slow_drawing_canvas.dart
 import 'package:draw_together/src/ui/widgets/base/toast/app_toast.dart';
 import 'package:draw_together/src/ui/widgets/playful_ui.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
+import 'package:draw_together/src/utils/app_pages.dart';
 import 'package:draw_together/src/utils/app_styles.dart';
 
 class DrawingBoardPage extends StatefulWidget {
@@ -27,6 +29,10 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
   late final DrawingBoardBloc _bloc;
   late final String _roomId;
   final GlobalKey _canvasBoundaryKey = GlobalKey();
+  Timer? _autoSubmitTimer;
+  String? _scheduledAutoSubmitRoundId;
+  bool _handledMatchEnd = false;
+  bool _isLeavingMatch = false;
 
   @override
   void initState() {
@@ -41,6 +47,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
   @override
   void dispose() {
+    _autoSubmitTimer?.cancel();
     _bloc.stopRoundTimer();
     _bloc.disconnectRealtime();
     super.dispose();
@@ -48,109 +55,132 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PlayfulScaffold(
-      child: BlocConsumer<DrawingBoardBloc, DrawingBoardState>(
-        bloc: _bloc,
-        listener: (context, state) {
-          final errorMessage = state.errorMessage;
-          if (errorMessage != null && errorMessage.isNotEmpty) {
-            showErrorToast(errorMessage);
-          }
-        },
-        builder: (context, state) {
-          if (_roomId.isEmpty) {
-            return Center(child: Text(LocaleKey.roomNotFound.tr));
-          }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _handleBack();
+        }
+      },
+      child: PlayfulScaffold(
+        child: BlocConsumer<DrawingBoardBloc, DrawingBoardState>(
+          bloc: _bloc,
+          listener: (context, state) {
+            final errorMessage = state.errorMessage;
+            if (errorMessage != null && errorMessage.isNotEmpty) {
+              showErrorToast(errorMessage);
+            }
 
-          if (state.pageState == PageState.loading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            final matchEndMessage = state.matchEndMessage;
+            if (!_isLeavingMatch &&
+                !_handledMatchEnd &&
+                matchEndMessage != null &&
+                matchEndMessage.isNotEmpty) {
+              _handledMatchEnd = true;
+              _autoSubmitTimer?.cancel();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                _showMatchEndedDialog(state);
+              });
+            }
 
-          final room = state.room;
-          final round = state.round;
-          final playerId = state.currentUserId;
-          if (room == null || round == null || playerId == null) {
-            return Center(
-              child: PlayfulGradientButton(
-                title: LocaleKey.retry.tr,
-                onTap: () => _bloc.load(_roomId),
-              ),
+            _scheduleAutoSubmit(state);
+          },
+          builder: (context, state) {
+            if (_roomId.isEmpty) {
+              return Center(child: Text(LocaleKey.roomNotFound.tr));
+            }
+
+            if (state.pageState == PageState.loading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final room = state.room;
+            final round = state.round;
+            final playerId = state.currentUserId;
+            if (room == null || round == null || playerId == null) {
+              return Center(
+                child: PlayfulGradientButton(
+                  title: LocaleKey.retry.tr,
+                  onTap: () => _bloc.load(_roomId),
+                ),
+              );
+            }
+
+            final header = _RoundHeader(
+              targetTitle: state.target?.title ?? round.targetImageId,
+              targetUrl: state.targetUrl,
+              remainingMs: state.remainingMs,
+              isRealtimeConnected: state.isRealtimeConnected,
+              colorHex: state.currentColorHex,
             );
-          }
+            final board = SlowDrawingCanvas(
+              repaintBoundaryKey: _canvasBoundaryKey,
+              roomId: room.id,
+              roundId: round.id,
+              playerId: playerId,
+              colorHex: state.currentColorHex,
+              segments: state.segments,
+              enabled: state.canDraw,
+              onSegment: _bloc.addLocalSegment,
+            );
 
-          final header = _RoundHeader(
-            targetTitle: state.target?.title ?? round.targetImageId,
-            targetUrl: state.targetUrl,
-            remainingMs: state.remainingMs,
-            isRealtimeConnected: state.isRealtimeConnected,
-            colorHex: state.currentColorHex,
-          );
-          final board = SlowDrawingCanvas(
-            repaintBoundaryKey: _canvasBoundaryKey,
-            roomId: room.id,
-            roundId: round.id,
-            playerId: playerId,
-            colorHex: state.currentColorHex,
-            segments: state.segments,
-            enabled: state.canDraw,
-            onSegment: _bloc.addLocalSegment,
-          );
+            if (state.canDraw) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                child: Column(
+                  children: [
+                    PlayfulHeader(
+                      title: LocaleKey.drawingBoard.tr,
+                      compact: true,
+                      leading: PlayfulIconButton(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        onTap: _handleBack,
+                        size: 44,
+                      ),
+                      trailing: PlayfulIconButton(
+                        icon: Icons.more_horiz_rounded,
+                        onTap: () {},
+                        size: 44,
+                      ),
+                    ),
+                    8.height,
+                    header,
+                    10.height,
+                    Expanded(child: Center(child: board)),
+                  ],
+                ),
+              );
+            }
 
-          if (state.canDraw) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-              child: Column(
-                children: [
-                  PlayfulHeader(
-                    title: LocaleKey.drawingBoard.tr,
-                    compact: true,
-                    leading: PlayfulIconButton(
-                      icon: Icons.arrow_back_ios_new_rounded,
-                      onTap: Get.back<void>,
-                      size: 44,
-                    ),
-                    trailing: PlayfulIconButton(
-                      icon: Icons.more_horiz_rounded,
-                      onTap: () {},
-                      size: 44,
-                    ),
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 20),
+              children: [
+                PlayfulHeader(
+                  title: LocaleKey.drawingBoard.tr,
+                  compact: true,
+                  leading: PlayfulIconButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    onTap: _handleBack,
+                    size: 44,
                   ),
-                  8.height,
-                  header,
-                  10.height,
-                  Expanded(child: Center(child: board)),
-                ],
-              ),
+                  trailing: PlayfulIconButton(
+                    icon: Icons.more_horiz_rounded,
+                    onTap: () {},
+                    size: 44,
+                  ),
+                ),
+                8.height,
+                header,
+                10.height,
+                board,
+                10.height,
+                _RoundStatusBar(text: _footerText(state)),
+                ..._resultActions(state),
+              ],
             );
-          }
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(10, 4, 10, 20),
-            children: [
-              PlayfulHeader(
-                title: LocaleKey.drawingBoard.tr,
-                compact: true,
-                leading: PlayfulIconButton(
-                  icon: Icons.arrow_back_ios_new_rounded,
-                  onTap: Get.back<void>,
-                  size: 44,
-                ),
-                trailing: PlayfulIconButton(
-                  icon: Icons.more_horiz_rounded,
-                  onTap: () {},
-                  size: 44,
-                ),
-              ),
-              8.height,
-              header,
-              10.height,
-              board,
-              10.height,
-              _RoundStatusBar(text: _footerText(state)),
-              ..._resultActions(state),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -168,19 +198,6 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
         14.height,
         _VersusScoreCard(state: state),
       ],
-      if (state.canSubmitTeamCanvas ||
-          state.canSubmitPlayerCanvas ||
-          state.isSubmitting) ...[
-        14.height,
-        PlayfulGradientButton(
-          title: state.isSubmitting
-              ? LocaleKey.submittingDrawing.tr
-              : LocaleKey.submitDrawing.tr,
-          icon: Icons.upload_rounded,
-          enabled: !state.isSubmitting,
-          onTap: _exportAndSubmitCanvas,
-        ),
-      ],
       if (state.canScoreRound || state.isScoring) ...[
         14.height,
         PlayfulGradientButton(
@@ -197,6 +214,11 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
   String _footerText(DrawingBoardState state) {
     if (state.canDraw) return LocaleKey.slowStrokeHint.tr;
+    if (state.matchEndMessage != null) return LocaleKey.opponentDisconnected.tr;
+    if (state.isSubmitting) return LocaleKey.submittingDrawing.tr;
+    if (state.canSubmitTeamCanvas || state.canSubmitPlayerCanvas) {
+      return LocaleKey.autoSubmittingDrawing.tr;
+    }
     if (state.isScoring) return LocaleKey.scoringDrawing.tr;
     if (state.isVersus && state.scores.isNotEmpty) {
       return LocaleKey.scoreReady.tr;
@@ -244,6 +266,75 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
       pngBytes: byteData.buffer.asUint8List(),
       width: width,
       height: height,
+    );
+  }
+
+  void _scheduleAutoSubmit(DrawingBoardState state) {
+    final roundId = state.round?.id;
+    final canAutoSubmit =
+        state.canSubmitTeamCanvas || state.canSubmitPlayerCanvas;
+    if (roundId == null || !canAutoSubmit || state.matchEndMessage != null) {
+      return;
+    }
+
+    if (_scheduledAutoSubmitRoundId == roundId) return;
+    _scheduledAutoSubmitRoundId = roundId;
+    _autoSubmitTimer?.cancel();
+    _autoSubmitTimer = Timer(const Duration(seconds: 3), () async {
+      if (!mounted) return;
+      final currentState = _bloc.state;
+      if (!currentState.canSubmitTeamCanvas &&
+          !currentState.canSubmitPlayerCanvas) {
+        return;
+      }
+      await _exportAndSubmitCanvas();
+    });
+  }
+
+  Future<void> _showMatchEndedDialog(DrawingBoardState state) async {
+    await Get.dialog<void>(
+      AlertDialog(
+        title: Text(LocaleKey.matchEnded.tr),
+        content: Text(LocaleKey.opponentDisconnected.tr),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back<void>(),
+            child: Text(LocaleKey.ok.tr),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+
+    if (!mounted) return;
+    _goToRoomBrowser(state.room?.mode);
+  }
+
+  Future<void> _handleBack() async {
+    if (_isLeavingMatch) return;
+    _isLeavingMatch = true;
+    _autoSubmitTimer?.cancel();
+
+    final state = _bloc.state;
+    final mode = state.room?.mode;
+    if (state.canDraw) {
+      await _bloc.endMatch(
+        message: 'A player left the match.',
+        broadcast: true,
+      );
+    }
+
+    if (!mounted) return;
+    _goToRoomBrowser(mode);
+  }
+
+  void _goToRoomBrowser(Object? mode) {
+    Get.offNamedUntil(
+      AppPages.roomBrowser,
+      (route) =>
+          route.settings.name == AppPages.home ||
+          route.settings.name == AppPages.main,
+      arguments: {'mode': mode},
     );
   }
 }

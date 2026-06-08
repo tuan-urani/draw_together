@@ -7,7 +7,7 @@ import 'package:draw_together/src/ui/base/interactor/page_states.dart';
 
 class RoomBrowserState {
   const RoomBrowserState({
-    required this.mode,
+    required this.selectedMode,
     this.pageState = PageState.initial,
     this.rooms = const <JoinableRoom>[],
     this.activeRoom,
@@ -16,7 +16,7 @@ class RoomBrowserState {
     this.joiningRoomId,
   });
 
-  final RoomMode mode;
+  final RoomMode selectedMode;
   final PageState pageState;
   final List<JoinableRoom> rooms;
   final GameRoom? activeRoom;
@@ -28,6 +28,7 @@ class RoomBrowserState {
 
   RoomBrowserState copyWith({
     PageState? pageState,
+    RoomMode? selectedMode,
     List<JoinableRoom>? rooms,
     GameRoom? activeRoom,
     String? errorMessage,
@@ -38,7 +39,7 @@ class RoomBrowserState {
     bool clearJoiningRoom = false,
   }) {
     return RoomBrowserState(
-      mode: mode,
+      selectedMode: selectedMode ?? this.selectedMode,
       pageState: pageState ?? this.pageState,
       rooms: rooms ?? this.rooms,
       activeRoom: clearActiveRoom ? null : activeRoom ?? this.activeRoom,
@@ -53,21 +54,25 @@ class RoomBrowserState {
 
 class RoomBrowserBloc extends Cubit<RoomBrowserState> {
   RoomBrowserBloc(this._roomRepository, RoomMode mode)
-    : super(RoomBrowserState(mode: mode));
+    : super(RoomBrowserState(selectedMode: mode));
 
   final RoomRepository _roomRepository;
 
-  Future<void> loadRooms() async {
+  Future<void> loadRooms({RoomMode? mode}) async {
+    final selectedMode = mode ?? state.selectedMode;
+    final shouldClearRooms = mode != null && mode != state.selectedMode;
     emit(
       state.copyWith(
         pageState: PageState.loading,
+        selectedMode: selectedMode,
+        rooms: shouldClearRooms ? <JoinableRoom>[] : state.rooms,
         clearError: true,
         clearActiveRoom: true,
       ),
     );
 
     try {
-      final rooms = await _roomRepository.listJoinableRooms(mode: state.mode);
+      final rooms = await _roomRepository.listJoinableRooms(mode: selectedMode);
       emit(
         state.copyWith(
           pageState: PageState.success,
@@ -85,7 +90,12 @@ class RoomBrowserBloc extends Cubit<RoomBrowserState> {
     }
   }
 
-  Future<void> createRoom() async {
+  Future<void> selectMode(RoomMode mode) async {
+    if (mode == state.selectedMode) return;
+    await loadRooms(mode: mode);
+  }
+
+  Future<void> createRoom(RoomMode mode) async {
     emit(
       state.copyWith(
         isCreatingRoom: true,
@@ -95,7 +105,7 @@ class RoomBrowserBloc extends Cubit<RoomBrowserState> {
     );
 
     try {
-      final room = await _roomRepository.createRoom(mode: state.mode);
+      final room = await _roomRepository.createRoom(mode: mode);
       emit(
         state.copyWith(
           activeRoom: room,
@@ -149,7 +159,7 @@ class RoomBrowserBloc extends Cubit<RoomBrowserState> {
 
   Future<List<JoinableRoom>> _refreshRoomsAfterFailedJoin() async {
     try {
-      return _roomRepository.listJoinableRooms(mode: state.mode);
+      return _roomRepository.listJoinableRooms(mode: state.selectedMode);
     } catch (_) {
       return state.rooms;
     }

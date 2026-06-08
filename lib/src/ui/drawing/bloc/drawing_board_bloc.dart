@@ -9,6 +9,7 @@ import 'package:draw_together/src/core/model/game_round.dart';
 import 'package:draw_together/src/core/model/game_room.dart';
 import 'package:draw_together/src/core/model/game_score.dart';
 import 'package:draw_together/src/core/model/game_submission.dart';
+import 'package:draw_together/src/core/model/room_presence.dart';
 import 'package:draw_together/src/core/model/room_player.dart';
 import 'package:draw_together/src/core/model/target_image.dart';
 import 'package:draw_together/src/core/repository/room_repository.dart';
@@ -27,6 +28,8 @@ class DrawingBoardState {
     this.currentUserId,
     this.currentColorHex = '#333333',
     this.segments = const <DrawingStrokeSegment>[],
+    this.players = const <RoomPlayer>[],
+    this.presences = const <RoomPresence>[],
     this.submissions = const <GameSubmission>[],
     this.scores = const <GameScore>[],
     this.teamSubmission,
@@ -35,6 +38,7 @@ class DrawingBoardState {
     this.isRealtimeConnected = false,
     this.isSubmitting = false,
     this.isScoring = false,
+    this.matchEndMessage,
     this.errorMessage,
   });
 
@@ -46,6 +50,8 @@ class DrawingBoardState {
   final String? currentUserId;
   final String currentColorHex;
   final List<DrawingStrokeSegment> segments;
+  final List<RoomPlayer> players;
+  final List<RoomPresence> presences;
   final List<GameSubmission> submissions;
   final List<GameScore> scores;
   final GameSubmission? teamSubmission;
@@ -54,10 +60,12 @@ class DrawingBoardState {
   final bool isRealtimeConnected;
   final bool isSubmitting;
   final bool isScoring;
+  final String? matchEndMessage;
   final String? errorMessage;
 
   bool get canDraw {
     return pageState == PageState.success &&
+        matchEndMessage == null &&
         round?.status == RoundStatus.drawing &&
         remainingMs > 0;
   }
@@ -119,6 +127,7 @@ class DrawingBoardState {
 
   bool get canSubmitTeamCanvas {
     return pageState == PageState.success &&
+        matchEndMessage == null &&
         isCoop &&
         isHost &&
         remainingMs == 0 &&
@@ -128,6 +137,7 @@ class DrawingBoardState {
 
   bool get canSubmitPlayerCanvas {
     return pageState == PageState.success &&
+        matchEndMessage == null &&
         isVersus &&
         remainingMs == 0 &&
         !hasCurrentPlayerSubmitted &&
@@ -135,7 +145,10 @@ class DrawingBoardState {
   }
 
   bool get canScoreRound {
-    if (pageState != PageState.success || !isHost || isScoring) {
+    if (pageState != PageState.success ||
+        matchEndMessage != null ||
+        !isHost ||
+        isScoring) {
       return false;
     }
 
@@ -153,6 +166,8 @@ class DrawingBoardState {
     String? currentUserId,
     String? currentColorHex,
     List<DrawingStrokeSegment>? segments,
+    List<RoomPlayer>? players,
+    List<RoomPresence>? presences,
     List<GameSubmission>? submissions,
     List<GameScore>? scores,
     GameSubmission? teamSubmission,
@@ -161,7 +176,9 @@ class DrawingBoardState {
     bool? isRealtimeConnected,
     bool? isSubmitting,
     bool? isScoring,
+    String? matchEndMessage,
     String? errorMessage,
+    bool clearMatchEndMessage = false,
     bool clearError = false,
   }) {
     return DrawingBoardState(
@@ -173,6 +190,8 @@ class DrawingBoardState {
       currentUserId: currentUserId ?? this.currentUserId,
       currentColorHex: currentColorHex ?? this.currentColorHex,
       segments: segments ?? this.segments,
+      players: players ?? this.players,
+      presences: presences ?? this.presences,
       submissions: submissions ?? this.submissions,
       scores: scores ?? this.scores,
       teamSubmission: teamSubmission ?? this.teamSubmission,
@@ -181,6 +200,9 @@ class DrawingBoardState {
       isRealtimeConnected: isRealtimeConnected ?? this.isRealtimeConnected,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       isScoring: isScoring ?? this.isScoring,
+      matchEndMessage: clearMatchEndMessage
+          ? null
+          : matchEndMessage ?? this.matchEndMessage,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
   }
@@ -201,6 +223,7 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
 
   RealtimeChannel? _channel;
   Timer? _roundTimer;
+  Timer? _disconnectTimer;
   final Set<String> _receivedSegmentKeys = <String>{};
 
   Future<void> load(String roomId) async {
@@ -244,6 +267,7 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
             players,
             currentUserId,
           ),
+          players: players,
           submissions: submissions,
           scores: scores,
           teamSubmission: _firstTeamSubmission(submissions),
@@ -366,9 +390,13 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
   }
 
   Future<void> disconnectRealtime() async {
+    _disconnectTimer?.cancel();
+    _disconnectTimer = null;
+
     final channel = _channel;
     if (channel == null) return;
 
+    await channel.untrack();
     await _roomRepository.removeChannel(channel);
     _channel = null;
 
@@ -451,14 +479,38 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
             }
           },
         )
+        .onBroadcast(
+          event: 'match_ended',
+          callback: (payload) {
+            final message = payload['message'] as String?;
+            _handleMatchEnded(message ?? 'A player disconnected.');
+          },
+        )
+        .onPresenceSync((_) {
+          _syncPresenceState();
+          _scheduleDisconnectCheckIfNeeded();
+        })
+        .onPresenceJoin((_) {
+          _syncPresenceState();
+          _scheduleDisconnectCheckIfNeeded();
+        })
+        .onPresenceLeave((_) {
+          _syncPresenceState();
+          _scheduleDisconnectCheckIfNeeded();
+        })
         .subscribe((status, error) {
           if (status == RealtimeSubscribeStatus.subscribed) {
             emit(state.copyWith(isRealtimeConnected: true, clearError: true));
+            unawaited(_trackDrawingPresence());
+            _scheduleDisconnectCheckIfNeeded();
             return;
           }
 
           if (status == RealtimeSubscribeStatus.channelError ||
               status == RealtimeSubscribeStatus.timedOut) {
+            unawaited(
+              endMatch(message: 'A player disconnected.', broadcast: true),
+            );
             emit(
               state.copyWith(
                 isRealtimeConnected: false,
@@ -480,6 +532,117 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
     emit(
       state.copyWith(
         segments: <DrawingStrokeSegment>[...state.segments, segment],
+      ),
+    );
+  }
+
+  Future<void> endMatch({
+    required String message,
+    required bool broadcast,
+  }) async {
+    final room = state.room;
+    final round = state.round;
+    if (room == null || round == null || state.matchEndMessage != null) {
+      return;
+    }
+
+    _handleMatchEnded(message);
+
+    if (broadcast) {
+      await _broadcastMatchEnded(message);
+    }
+
+    try {
+      await _roomRepository.failRoundAndFinishRoom(
+        roomId: room.id,
+        roundId: round.id,
+      );
+    } catch (error) {
+      if (!isClosed) {
+        emit(state.copyWith(errorMessage: error.toString()));
+      }
+    }
+  }
+
+  Future<void> _trackDrawingPresence() async {
+    final channel = _channel;
+    final userId = state.currentUserId;
+    if (channel == null || userId == null) return;
+
+    final player = _currentRoomPlayer(state.players, userId);
+    await channel.track(
+      RoomPresence(
+        userId: userId,
+        displayName: player?.displayName ?? 'Player',
+        seat: player?.seat ?? 0,
+        ready: true,
+        onlineAt: DateTime.now(),
+      ).toJson(),
+    );
+  }
+
+  void _syncPresenceState() {
+    final channel = _channel;
+    if (channel == null || isClosed) return;
+
+    final presences = <RoomPresence>[];
+    for (final presenceState in channel.presenceState()) {
+      for (final presence in presenceState.presences) {
+        presences.add(RoomPresence.fromJson(presence.payload));
+      }
+    }
+
+    emit(state.copyWith(presences: presences));
+  }
+
+  void _scheduleDisconnectCheckIfNeeded() {
+    _disconnectTimer?.cancel();
+    _disconnectTimer = null;
+
+    if (!_shouldWatchForDisconnects()) return;
+
+    _disconnectTimer = Timer(const Duration(seconds: 5), () {
+      if (!_shouldWatchForDisconnects() || !_hasMissingOpponent()) return;
+      unawaited(endMatch(message: 'A player disconnected.', broadcast: true));
+    });
+  }
+
+  bool _shouldWatchForDisconnects() {
+    return !isClosed &&
+        state.matchEndMessage == null &&
+        state.round?.status == RoundStatus.drawing &&
+        state.remainingMs > 0 &&
+        state.players.length >= 2;
+  }
+
+  bool _hasMissingOpponent() {
+    final currentUserId = state.currentUserId;
+    if (currentUserId == null) return false;
+
+    final onlineUserIds = state.presences
+        .map((presence) => presence.userId)
+        .where((userId) => userId.isNotEmpty)
+        .toSet();
+    if (!onlineUserIds.contains(currentUserId)) return false;
+
+    return state.players
+        .where((player) => player.userId != currentUserId)
+        .any((player) => !onlineUserIds.contains(player.userId));
+  }
+
+  void _handleMatchEnded(String message) {
+    if (isClosed || state.matchEndMessage != null) return;
+
+    stopRoundTimer();
+    _disconnectTimer?.cancel();
+    _disconnectTimer = null;
+
+    emit(
+      state.copyWith(
+        remainingMs: 0,
+        isSubmitting: false,
+        isScoring: false,
+        matchEndMessage: message,
       ),
     );
   }
@@ -534,6 +697,23 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
         'resultId': firstScore.id,
         'score': _scorePayload(firstScore),
         'scores': scores.map(_scorePayload).toList(growable: false),
+      },
+    );
+  }
+
+  Future<void> _broadcastMatchEnded(String message) async {
+    final channel = _channel;
+    final room = state.room;
+    final round = state.round;
+    if (channel == null || room == null || round == null) return;
+
+    await channel.sendBroadcastMessage(
+      event: 'match_ended',
+      payload: <String, dynamic>{
+        'type': 'match_ended',
+        'roomId': room.id,
+        'roundId': round.id,
+        'message': message,
       },
     );
   }
@@ -603,6 +783,13 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
     };
   }
 
+  RoomPlayer? _currentRoomPlayer(List<RoomPlayer> players, String userId) {
+    for (final player in players) {
+      if (player.userId == userId) return player;
+    }
+    return null;
+  }
+
   GameSubmission? _firstTeamSubmission(List<GameSubmission> submissions) {
     for (final submission in submissions) {
       if (submission.isTeamSubmission) return submission;
@@ -649,6 +836,7 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
   @override
   Future<void> close() async {
     stopRoundTimer();
+    _disconnectTimer?.cancel();
     await disconnectRealtime();
     return super.close();
   }

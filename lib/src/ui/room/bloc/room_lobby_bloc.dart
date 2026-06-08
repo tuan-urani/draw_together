@@ -25,6 +25,7 @@ class RoomLobbyState {
     this.remainingMs = 0,
     this.isReady = false,
     this.isStartingRound = false,
+    this.roomEndMessage,
     this.errorMessage,
   });
 
@@ -39,6 +40,7 @@ class RoomLobbyState {
   final int remainingMs;
   final bool isReady;
   final bool isStartingRound;
+  final String? roomEndMessage;
   final String? errorMessage;
 
   bool get isHost => room != null && currentUserId == room!.hostUserId;
@@ -50,7 +52,7 @@ class RoomLobbyState {
 
   bool get allPlayersReady {
     if (!hasTwoPlayers) return false;
-    return _isSeatReady(1) && _isSeatReady(2);
+    return _isPlayerReady(_playerAtSeat(1)) && _isPlayerReady(_playerAtSeat(2));
   }
 
   bool get canStartRound {
@@ -73,28 +75,46 @@ class RoomLobbyState {
     int? remainingMs,
     bool? isReady,
     bool? isStartingRound,
+    String? roomEndMessage,
     String? errorMessage,
+    bool clearActiveRound = false,
+    bool clearTarget = false,
+    bool clearTargetUrl = false,
     bool clearError = false,
+    bool clearRoomEndMessage = false,
   }) {
     return RoomLobbyState(
       pageState: pageState ?? this.pageState,
       room: room ?? this.room,
       players: players ?? this.players,
       presences: presences ?? this.presences,
-      activeRound: activeRound ?? this.activeRound,
-      target: target ?? this.target,
-      targetUrl: targetUrl ?? this.targetUrl,
+      activeRound: clearActiveRound ? null : activeRound ?? this.activeRound,
+      target: clearTarget ? null : target ?? this.target,
+      targetUrl: clearTargetUrl ? null : targetUrl ?? this.targetUrl,
       currentUserId: currentUserId ?? this.currentUserId,
       remainingMs: remainingMs ?? this.remainingMs,
       isReady: isReady ?? this.isReady,
       isStartingRound: isStartingRound ?? this.isStartingRound,
+      roomEndMessage: clearRoomEndMessage
+          ? null
+          : roomEndMessage ?? this.roomEndMessage,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
   }
 
-  bool _isSeatReady(int seat) {
+  RoomPlayer? _playerAtSeat(int seat) {
+    for (final player in players) {
+      if (player.seat == seat) return player;
+    }
+    return null;
+  }
+
+  bool _isPlayerReady(RoomPlayer? player) {
+    if (player == null) return false;
+    if (room != null && player.userId == room!.hostUserId) return true;
+
     for (final presence in presences) {
-      if (presence.seat == seat && presence.ready) return true;
+      if (presence.userId == player.userId && presence.ready) return true;
     }
     return false;
   }
@@ -109,14 +129,31 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
   RealtimeChannel? _channel;
   String? _connectedRoomId;
   Timer? _roundTimer;
+  String? _lastTrackedPresenceSignature;
 
   Future<void> loadRoom(String roomId) async {
-    emit(state.copyWith(pageState: PageState.loading, clearError: true));
+    stopRoundTimer();
+    emit(
+      state.copyWith(
+        pageState: PageState.loading,
+        remainingMs: 0,
+        isReady: false,
+        isStartingRound: false,
+        clearActiveRound: true,
+        clearTarget: true,
+        clearTargetUrl: true,
+        clearRoomEndMessage: true,
+        clearError: true,
+      ),
+    );
 
     try {
       final room = await _roomRepository.fetchRoomById(roomId);
       final players = await _roomRepository.listRoomPlayers(roomId);
-      final round = await _roomRepository.fetchLatestRound(roomId);
+      final latestRound = await _roomRepository.fetchLatestRound(roomId);
+      final round = latestRound?.status == RoundStatus.drawing
+          ? latestRound
+          : null;
       final target = round == null
           ? null
           : await _targetRepository.fetchTargetById(round.targetImageId);
@@ -133,6 +170,12 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
               : _targetRepository.publicUrlFor(target),
           currentUserId: _roomRepository.currentUserId,
           remainingMs: round == null ? 0 : _remainingMsFor(round),
+          isReady: room.hostUserId == _roomRepository.currentUserId,
+          isStartingRound: false,
+          clearActiveRound: round == null,
+          clearTarget: target == null,
+          clearTargetUrl: target == null,
+          clearRoomEndMessage: true,
           clearError: true,
         ),
       );
@@ -222,6 +265,25 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
     await _trackPresence(room: room, players: state.players, ready: ready);
   }
 
+  Future<void> leaveRoomFromBack() async {
+    final room = state.room;
+    if (room == null) return;
+
+    try {
+      if (state.isHost) {
+        await _roomRepository.finishRoom(room.id);
+        await _broadcastRoomClosed(
+          'The host left the room. Returning to lobby.',
+        );
+      }
+
+      await _roomRepository.leaveCurrentPlayerRoom(room.id);
+      await disconnectPresence();
+    } catch (error) {
+      emit(state.copyWith(errorMessage: error.toString()));
+    }
+  }
+
   RoomPresence? presenceForUser(String userId) {
     for (final presence in state.presences) {
       if (presence.userId == userId) return presence;
@@ -237,6 +299,7 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
     await _roomRepository.removeChannel(channel);
     _channel = null;
     _connectedRoomId = null;
+    _lastTrackedPresenceSignature = null;
   }
 
   void stopRoundTimer() {
@@ -276,21 +339,35 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
             unawaited(_loadLatestRound(room.id));
           },
         )
+        .onBroadcast(
+          event: 'room_closed',
+          callback: (payload) {
+            final message = payload['message'] as String?;
+            emit(
+              state.copyWith(
+                roomEndMessage:
+                    message ?? 'The room was closed. Returning to lobby.',
+              ),
+            );
+          },
+        )
         .onPresenceSync((_) {
           _syncPresenceState();
         })
         .onPresenceJoin((_) {
           _syncPresenceState();
+          unawaited(_refreshPlayers());
         })
         .onPresenceLeave((_) {
           _syncPresenceState();
+          unawaited(_refreshPlayers());
         })
         .subscribe((status, error) async {
           if (status == RealtimeSubscribeStatus.subscribed) {
             await _trackPresence(
               room: room,
               players: players,
-              ready: state.isReady,
+              ready: state.isHost || state.isReady,
             );
             return;
           }
@@ -321,11 +398,19 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
       userId: currentUserId,
       displayName: player?.displayName ?? 'Player',
       seat: player?.seat ?? 0,
-      ready: ready,
+      ready: room.hostUserId == currentUserId || ready,
       onlineAt: DateTime.now(),
     );
+    final signature =
+        '${presence.userId}|${presence.displayName}|${presence.seat}|${presence.ready}';
+    if (_lastTrackedPresenceSignature == signature) {
+      _upsertLocalPresence(presence);
+      return;
+    }
 
     await channel.track(presence.toJson());
+    _lastTrackedPresenceSignature = signature;
+    _upsertLocalPresence(presence);
   }
 
   void _syncPresenceState() {
@@ -342,6 +427,37 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
     emit(state.copyWith(presences: presences));
   }
 
+  Future<void> _refreshPlayers() async {
+    final room = state.room;
+    if (room == null) return;
+
+    try {
+      final players = await _roomRepository.listRoomPlayers(room.id);
+      if (isClosed) return;
+      emit(state.copyWith(players: players));
+    } catch (_) {
+      // Presence still provides a fallback while DB state catches up.
+    }
+  }
+
+  void _upsertLocalPresence(RoomPresence presence) {
+    if (isClosed) return;
+
+    final presences = <RoomPresence>[];
+    var replaced = false;
+    for (final existing in state.presences) {
+      if (existing.userId == presence.userId) {
+        if (!replaced) presences.add(presence);
+        replaced = true;
+        continue;
+      }
+      presences.add(existing);
+    }
+
+    if (!replaced) presences.add(presence);
+    emit(state.copyWith(presences: presences));
+  }
+
   Future<void> _broadcastRoundStarted(GameRound round) async {
     final channel = _channel;
     if (channel == null) return;
@@ -349,6 +465,20 @@ class RoomLobbyBloc extends Cubit<RoomLobbyState> {
     await channel.sendBroadcastMessage(
       event: 'round_started',
       payload: <String, dynamic>{'round': round.toBroadcastPayload()},
+    );
+  }
+
+  Future<void> _broadcastRoomClosed(String message) async {
+    final channel = _channel;
+    if (channel == null) return;
+
+    await channel.sendBroadcastMessage(
+      event: 'room_closed',
+      payload: <String, dynamic>{
+        'type': 'room_closed',
+        'roomId': state.room?.id,
+        'message': message,
+      },
     );
   }
 

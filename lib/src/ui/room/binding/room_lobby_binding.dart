@@ -7,13 +7,11 @@ import 'package:draw_together/src/ui/room/bloc/room_lobby_bloc.dart';
 class RoomLobbyBinding extends Bindings {
   @override
   void dependencies() {
-    if (!Get.isRegistered<RoomLobbyBloc>()) {
-      Get.lazyPut<RoomLobbyBloc>(
-        () => RoomLobbyBloc(
-          Get.find<RoomRepository>(),
-          Get.find<TargetRepository>(),
-        ),
-      );
-    }
+    Get.lazyPut<RoomLobbyBloc>(
+      () => RoomLobbyBloc(
+        Get.find<RoomRepository>(),
+        Get.find<TargetRepository>(),
+      ),
+    );
   }
 }

@@ -82,14 +82,6 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const PlayfulAvatar(size: 74),
-                    _NotificationButton(onTap: () {}),
-                  ],
-                ),
-                28.height,
                 RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
@@ -132,7 +124,11 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Expanded(
                       child: _ModeActionCard(
-                        backgroundAsset: AppAssets.card1Png,
+                        title: LocaleKey.coopModeTitle.tr,
+                        characterAsset: AppAssets.characterCardLeftPng,
+                        icon: Icons.groups_rounded,
+                        gradient: PlayfulColors.coopCardGradient,
+                        accentColor: PlayfulColors.blue,
                         onTap: state.isRoomActionLoading
                             ? null
                             : () => _openRoomBrowser(RoomMode.coop),
@@ -141,7 +137,11 @@ class _HomePageState extends State<HomePage> {
                     16.width,
                     Expanded(
                       child: _ModeActionCard(
-                        backgroundAsset: AppAssets.card2Png,
+                        title: LocaleKey.soloModeTitle.tr,
+                        characterAsset: AppAssets.characterCardRightPng,
+                        icon: Icons.bolt_rounded,
+                        gradient: PlayfulColors.soloCardGradient,
+                        accentColor: PlayfulColors.purpleDark,
                         onTap: state.isRoomActionLoading
                             ? null
                             : () => _openRoomBrowser(RoomMode.versus),
@@ -257,52 +257,6 @@ class _HomeTextInputDialogState extends State<_HomeTextInputDialog> {
   void _submit() => Get.back<String>(result: _controller.text);
 }
 
-class _NotificationButton extends StatelessWidget {
-  const _NotificationButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.white.withValues(alpha: 0.96),
-              borderRadius: 26.borderRadiusAll,
-              boxShadow: playfulShadow,
-            ),
-            child: const SizedBox(
-              width: 64,
-              height: 64,
-              child: Icon(
-                Icons.notifications_none_rounded,
-                color: PlayfulColors.ink,
-                size: 32,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 5,
-            top: 5,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF2D45),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.white, width: 2),
-              ),
-              child: const SizedBox(width: 14, height: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ProfileSummary extends StatelessWidget {
   const _ProfileSummary({required this.state, required this.onEdit});
 
@@ -406,9 +360,20 @@ class _OnlinePill extends StatelessWidget {
 }
 
 class _ModeActionCard extends StatelessWidget {
-  const _ModeActionCard({required this.backgroundAsset, required this.onTap});
+  const _ModeActionCard({
+    required this.title,
+    required this.characterAsset,
+    required this.icon,
+    required this.gradient,
+    required this.accentColor,
+    required this.onTap,
+  });
 
-  final String backgroundAsset;
+  final String title;
+  final String characterAsset;
+  final IconData icon;
+  final Gradient gradient;
+  final Color accentColor;
   final VoidCallback? onTap;
 
   @override
@@ -417,14 +382,93 @@ class _ModeActionCard extends StatelessWidget {
       onTap: onTap,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(backgroundAsset),
-            fit: BoxFit.contain,
-          ),
+          gradient: gradient,
           borderRadius: 28.borderRadiusAll,
           boxShadow: playfulShadow,
         ),
-        child: SizedBox(height: 206),
+        child: AspectRatio(
+          aspectRatio: 0.78,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ModeIconBadge(icon: icon),
+                Expanded(
+                  child: Image.asset(
+                    characterAsset,
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppStyles.h3(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                    6.width,
+                    _ModeArrowButton(color: accentColor),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeIconBadge extends StatelessWidget {
+  const _ModeIconBadge({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.white.withValues(alpha: 0.16),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: AppColors.white.withValues(alpha: 0.32),
+          width: 2,
+        ),
+      ),
+      child: SizedBox(
+        width: 42,
+        height: 42,
+        child: Icon(icon, color: AppColors.white, size: 24),
+      ),
+    );
+  }
+}
+
+class _ModeArrowButton extends StatelessWidget {
+  const _ModeArrowButton({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        shape: BoxShape.circle,
+      ),
+      child: SizedBox(
+        width: 38,
+        height: 38,
+        child: Icon(Icons.arrow_forward_rounded, color: color, size: 24),
       ),
     );
   }

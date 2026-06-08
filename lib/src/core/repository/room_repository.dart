@@ -162,13 +162,44 @@ class RoomRepository {
         .eq('id', round.roomId);
   }
 
+  Future<void> finishRoom(String roomId) async {
+    await _client
+        .from('rooms')
+        .update({'status': RoomStatus.finished.value})
+        .eq('id', roomId);
+  }
+
+  Future<void> leaveCurrentPlayerRoom(String roomId) async {
+    final user = _requireUser();
+    await _client
+        .from('room_players')
+        .update({'left_at': DateTime.now().toUtc().toIso8601String()})
+        .eq('room_id', roomId)
+        .eq('user_id', user.id)
+        .isFilter('left_at', null);
+  }
+
+  Future<void> failRoundAndFinishRoom({
+    required String roomId,
+    required String roundId,
+  }) async {
+    final endedAt = DateTime.now().toUtc().toIso8601String();
+
+    await _client
+        .from('rounds')
+        .update({'status': RoundStatus.failed.value, 'ended_at': endedAt})
+        .eq('id', roundId);
+
+    await finishRoom(roomId);
+  }
+
   String? get currentUserId => _client.auth.currentUser?.id;
 
   RealtimeChannel createRoomChannel(String roomId) {
     final userId = _requireUser().id;
     return _client.channel(
       'room:$roomId',
-      opts: RealtimeChannelConfig(key: userId),
+      opts: RealtimeChannelConfig(key: userId, enabled: true),
     );
   }
 

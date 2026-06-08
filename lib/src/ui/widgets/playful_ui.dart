@@ -13,9 +13,31 @@ class PlayfulColors {
   static const Color blue = Color(0xFF227BFF);
   static const Color cyan = Color(0xFF18B7F3);
   static const Color purple = Color(0xFF9B55F3);
+  static const Color purpleDark = Color(0xFF6B2DE5);
   static const Color yellow = Color(0xFFFFC84D);
   static const Color green = Color(0xFF33C75A);
   static const Color softBlue = Color(0xFFE9F5FF);
+  static const Color lobbyPurple = Color(0xFF6849E8);
+  static const Color lobbySoftPurple = Color(0xFFF0E9FF);
+  static const Color lobbySoftGreen = Color(0xFFE7F8EC);
+  static const Color lobbyDivider = Color(0xFFE1E8F3);
+  static const Color lobbyPlayerRow = Color(0xFFF8FAFF);
+  static const Color lobbySeatInactive = Color(0xFFEAF1FB);
+  static const Color lobbyBorder = Color(0xFFDCE8F8);
+  static const Color lobbyWarning = Color(0xFFFFB62D);
+  static const Color lobbyWarningSoft = Color(0xFFFFEBC0);
+
+  static const LinearGradient coopCardGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [cyan, blue],
+  );
+
+  static const LinearGradient soloCardGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [purple, purpleDark],
+  );
 }
 
 class PlayfulScaffold extends StatelessWidget {
