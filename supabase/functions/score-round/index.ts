@@ -203,6 +203,7 @@ async function scoreCoopRound({
       team_score: scoreResult.score,
       similarity_score: scoreResult.score,
       winner: false,
+      rationale: scoreResult.rationale,
     })
     .select()
     .single();
@@ -287,6 +288,7 @@ async function scoreVersusRound({
     team_score: null,
     similarity_score: entry.result.score,
     winner: winnerCount === 1 && entry.result.score === maxScore,
+    rationale: entry.result.rationale,
   }));
 
   const { data: scores, error: scoreError } = await supabase

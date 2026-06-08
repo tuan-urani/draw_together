@@ -15,6 +15,7 @@ import 'package:draw_together/src/ui/drawing/components/slow_drawing_canvas.dart
 import 'package:draw_together/src/ui/widgets/base/toast/app_toast.dart';
 import 'package:draw_together/src/ui/widgets/playful_ui.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
+import 'package:draw_together/src/utils/app_assets.dart';
 import 'package:draw_together/src/utils/app_pages.dart';
 import 'package:draw_together/src/utils/app_styles.dart';
 
@@ -108,11 +109,12 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
             }
 
             final header = _RoundHeader(
+              state: state,
               targetTitle: state.target?.title ?? round.targetImageId,
               targetUrl: state.targetUrl,
               remainingMs: state.remainingMs,
-              isRealtimeConnected: state.isRealtimeConnected,
               colorHex: state.currentColorHex,
+              onViewReason: () => _showScoreReasonDialog(state),
             );
             final board = SlowDrawingCanvas(
               repaintBoundaryKey: _canvasBoundaryKey,
@@ -123,6 +125,19 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
               segments: state.segments,
               enabled: state.canDraw,
               onSegment: _bloc.addLocalSegment,
+              lockedOverlay: state.matchEndMessage == null
+                  ? _ResultReviewPanel(
+                      isVersus: state.isVersus,
+                      score: state.isVersus
+                          ? state.currentPlayerScore?.similarityScore
+                          : state.teamScore?.teamScore ??
+                                state.teamScore?.similarityScore,
+                      opponentScore: state.opponentScore?.similarityScore,
+                      isWinner: state.currentPlayerScore?.winner ?? false,
+                      isTie: state.isTie,
+                      onViewReason: () => _showScoreReasonDialog(state),
+                    )
+                  : null,
             );
 
             if (state.canDraw) {
@@ -147,7 +162,7 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
                     8.height,
                     header,
                     10.height,
-                    Expanded(child: Center(child: board)),
+                    Expanded(child: board),
                   ],
                 ),
               );
@@ -174,42 +189,16 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
                 header,
                 10.height,
                 board,
-                10.height,
-                _RoundStatusBar(text: _footerText(state)),
-                ..._resultActions(state),
+                if (state.matchEndMessage != null) ...[
+                  10.height,
+                  _RoundStatusBar(text: _footerText(state)),
+                ],
               ],
             );
           },
         ),
       ),
     );
-  }
-
-  List<Widget> _resultActions(DrawingBoardState state) {
-    return <Widget>[
-      if (state.teamScore != null) ...[
-        14.height,
-        _ScoreCard(
-          title: LocaleKey.teamScore.tr,
-          score: state.teamScore!.teamScore ?? state.teamScore!.similarityScore,
-        ),
-      ],
-      if (state.scores.isNotEmpty && state.isVersus) ...[
-        14.height,
-        _VersusScoreCard(state: state),
-      ],
-      if (state.canScoreRound || state.isScoring) ...[
-        14.height,
-        PlayfulGradientButton(
-          title: state.isScoring
-              ? LocaleKey.scoringDrawing.tr
-              : LocaleKey.scoreDrawing.tr,
-          icon: Icons.auto_awesome_rounded,
-          enabled: !state.isScoring,
-          onTap: _bloc.scoreRound,
-        ),
-      ],
-    ];
   }
 
   String _footerText(DrawingBoardState state) {
@@ -310,6 +299,63 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     _goToRoomBrowser(state.room?.mode);
   }
 
+  Future<void> _showScoreReasonDialog(DrawingBoardState state) async {
+    final score = state.displayScore;
+    final submission = state.displaySubmission;
+    if (score == null || submission == null) return;
+
+    final submissionUrl = await _bloc.signedSubmissionUrlFor(submission);
+    if (!mounted) return;
+
+    await Get.dialog<void>(
+      AlertDialog(
+        title: Text(LocaleKey.scoreReason.tr),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _ReasonImageCard(
+                      title: LocaleKey.target.tr,
+                      imageUrl: state.targetUrl,
+                    ),
+                  ),
+                  10.width,
+                  Expanded(
+                    child: _ReasonImageCard(
+                      title: LocaleKey.yourDrawing.tr,
+                      imageUrl: submissionUrl,
+                    ),
+                  ),
+                ],
+              ),
+              16.height,
+              Text(
+                score.rationale?.trim().isNotEmpty == true
+                    ? score.rationale!.trim()
+                    : LocaleKey.scoreReady.tr,
+                style: AppStyles.bodyMedium(
+                  color: PlayfulColors.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back<void>(),
+            child: Text(LocaleKey.ok.tr),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleBack() async {
     if (_isLeavingMatch) return;
     _isLeavingMatch = true;
@@ -373,132 +419,432 @@ class _RoundStatusBar extends StatelessWidget {
   }
 }
 
-class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({required this.title, required this.score});
+class _ResultReviewPanel extends StatelessWidget {
+  const _ResultReviewPanel({
+    required this.isVersus,
+    required this.score,
+    required this.opponentScore,
+    required this.isWinner,
+    required this.isTie,
+    required this.onViewReason,
+  });
 
-  final String title;
+  final bool isVersus;
+  final int? score;
+  final int? opponentScore;
+  final bool isWinner;
+  final bool isTie;
+  final VoidCallback onViewReason;
+
+  @override
+  Widget build(BuildContext context) {
+    final isReady = score != null;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.transparent,
+        borderRadius: 22.borderRadiusAll,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+        child: Column(
+          mainAxisAlignment: isReady
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
+          children: [
+            if (!isReady) ...[
+              10.height,
+              Image.asset(
+                AppAssets.aiBotWaitingGif,
+                width: 200,
+                height: 200,
+                fit: BoxFit.cover,
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: 18.borderRadiusAll,
+                  boxShadow: [
+                    BoxShadow(
+                      color: PlayfulColors.ink.withValues(alpha: 0.1),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            color: PlayfulColors.blue,
+                            size: 22,
+                          ),
+                          8.width,
+                          Text(
+                            LocaleKey.aiReviewingArtwork.tr,
+                            textAlign: TextAlign.center,
+                            style: AppStyles.h4(
+                              color: PlayfulColors.ink,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          8.width,
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            color: PlayfulColors.blue,
+                            size: 22,
+                          ),
+                        ],
+                      ),
+                      6.height,
+                      Text(
+                        LocaleKey.comparingShapes.tr,
+                        textAlign: TextAlign.center,
+                        style: AppStyles.bodyMedium(
+                          color: PlayfulColors.muted,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // 16.height,
+              // Image.asset(
+              //   AppAssets.resultLoadingGif,
+              //   width: 120,
+              //   height: 38,
+              //   fit: BoxFit.contain,
+              // ),
+            ] else ...[
+              if (isVersus)
+                _VersusScorePanel(
+                  score: score ?? 0,
+                  opponentScore: opponentScore ?? 0,
+                  isWinner: isWinner,
+                  isTie: isTie,
+                )
+              else
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: 28.borderRadiusAll,
+                    boxShadow: [
+                      BoxShadow(
+                        color: PlayfulColors.ink.withValues(alpha: 0.12),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+                    child: Column(
+                      children: [
+                        Image.asset(
+                          AppAssets.starScorePng,
+                          width: 62,
+                          height: 62,
+                          fit: BoxFit.contain,
+                        ),
+                        8.height,
+                        Text(
+                          LocaleKey.scoreReady.tr,
+                          textAlign: TextAlign.center,
+                          style: AppStyles.h2(
+                            color: PlayfulColors.ink,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        10.height,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${score! * 10}',
+                              style: AppStyles.h1(
+                                color: const Color(0xFF58D96C),
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
+                            ),
+                            8.width,
+                            Text(
+                              '/ 1000',
+                              style: AppStyles.h3(
+                                color: const Color(0xFFA8B0C2),
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              16.height,
+              InkWell(
+                borderRadius: 999.borderRadiusAll,
+                onTap: onViewReason,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.96),
+                    borderRadius: 999.borderRadiusAll,
+                    boxShadow: [
+                      BoxShadow(
+                        color: PlayfulColors.ink.withValues(alpha: 0.12),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.description_outlined,
+                          color: PlayfulColors.blue,
+                          size: 24,
+                        ),
+                        12.width,
+                        Text(
+                          LocaleKey.tapToSeeWhy.tr,
+                          style: AppStyles.h4(
+                            color: PlayfulColors.blue,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        12.width,
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: PlayfulColors.blue,
+                          size: 28,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VersusScorePanel extends StatelessWidget {
+  const _VersusScorePanel({
+    required this.score,
+    required this.opponentScore,
+    required this.isWinner,
+    required this.isTie,
+  });
+
   final int score;
+  final int opponentScore;
+  final bool isWinner;
+  final bool isTie;
+
+  @override
+  Widget build(BuildContext context) {
+    final resultTitle = isTie
+        ? LocaleKey.tie.tr.toUpperCase()
+        : isWinner
+        ? LocaleKey.youWin.tr.toUpperCase()
+        : LocaleKey.youLose.tr.toUpperCase();
+    final resultSubtitle = isTie
+        ? LocaleKey.bothDrawingsAreClose.tr
+        : isWinner
+        ? LocaleKey.betterThanOpponent.tr
+        : LocaleKey.tryAgainNextRound.tr;
+    final resultColor = isTie
+        ? PlayfulColors.blue
+        : isWinner
+        ? const Color(0xFF35C759)
+        : const Color(0xFFFF4D4F);
+    final diff = (score - opponentScore).abs() * 10;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: 28.borderRadiusAll,
+        boxShadow: [
+          BoxShadow(
+            color: PlayfulColors.ink.withValues(alpha: 0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        child: Column(
+          children: [
+            Image.asset(
+              AppAssets.starScorePng,
+              width: 54,
+              height: 54,
+              fit: BoxFit.contain,
+            ),
+            8.height,
+            Text(
+              resultTitle,
+              textAlign: TextAlign.center,
+              style: AppStyles.h2(
+                color: resultColor,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            4.height,
+            Text(
+              resultSubtitle,
+              textAlign: TextAlign.center,
+              style: AppStyles.bodySmall(
+                color: PlayfulColors.muted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            14.height,
+            Row(
+              children: [
+                Expanded(
+                  child: _VersusMiniScoreCard(
+                    label: 'YOU',
+                    score: score,
+                    scoreColor: const Color(0xFF35C759),
+                    background: const Color(0xFFEFFAF1),
+                    border: const Color(0xFFD7F2DE),
+                  ),
+                ),
+                10.width,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: PlayfulColors.ink.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: Text(
+                        'VS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: PlayfulColors.ink,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                10.width,
+                Expanded(
+                  child: _VersusMiniScoreCard(
+                    label: 'OPPONENT',
+                    score: opponentScore,
+                    scoreColor: const Color(0xFFFF4D4F),
+                    background: const Color(0xFFFFF1F1),
+                    border: const Color(0xFFF7D7D7),
+                  ),
+                ),
+              ],
+            ),
+            12.height,
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFFAF1),
+                borderRadius: 999.borderRadiusAll,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Text(
+                  isTie ? 'Tie' : '+$diff points',
+                  style: AppStyles.bodyMedium(
+                    color: const Color(0xFF35C759),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VersusMiniScoreCard extends StatelessWidget {
+  const _VersusMiniScoreCard({
+    required this.label,
+    required this.score,
+    required this.scoreColor,
+    required this.background,
+    required this.border,
+  });
+
+  final String label;
+  final int score;
+  final Color scoreColor;
+  final Color background;
+  final Color border;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.82),
+        color: background,
         borderRadius: 18.borderRadiusAll,
+        border: Border.all(color: border),
       ),
       child: Padding(
-        padding: 18.paddingAll,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Column(
           children: [
             Text(
-              title,
-              style: AppStyles.bodyMedium(
-                color: AppColors.color667394,
-                fontWeight: FontWeight.w700,
+              label,
+              style: AppStyles.caption(
+                color: scoreColor,
+                fontWeight: FontWeight.w900,
               ),
             ),
             8.height,
             Text(
               '$score',
               style: AppStyles.h1(
-                color: const Color(0xFF08BCE8),
-                fontWeight: FontWeight.w700,
+                color: scoreColor,
+                fontWeight: FontWeight.w900,
+                height: 1,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _VersusScoreCard extends StatelessWidget {
-  const _VersusScoreCard({required this.state});
-
-  final DrawingBoardState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final playerScore = state.currentPlayerScore;
-    final opponentScore = state.opponentScore;
-    final isWinner = playerScore?.winner ?? false;
-    final title = state.isTie
-        ? LocaleKey.tie.tr
-        : isWinner
-        ? LocaleKey.youWin.tr
-        : LocaleKey.youLose.tr;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.82),
-        borderRadius: 18.borderRadiusAll,
-      ),
-      child: Padding(
-        padding: 18.paddingAll,
-        child: Column(
-          children: [
+            4.height,
             Text(
-              title,
-              style: AppStyles.bodyLarge(
-                color: AppColors.color333333,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            12.height,
-            Row(
-              children: [
-                Expanded(
-                  child: _ScoreValue(
-                    label: LocaleKey.yourScore.tr,
-                    score: playerScore?.similarityScore,
-                  ),
-                ),
-                12.width,
-                Expanded(
-                  child: _ScoreValue(
-                    label: LocaleKey.opponentScore.tr,
-                    score: opponentScore?.similarityScore,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ScoreValue extends StatelessWidget {
-  const _ScoreValue({required this.label, required this.score});
-
-  final String label;
-  final int? score;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: 14.borderRadiusAll,
-      ),
-      child: Padding(
-        padding: 12.paddingAll,
-        child: Column(
-          children: [
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: AppStyles.caption(
-                color: AppColors.color667394,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            6.height,
-            Text(
-              score?.toString() ?? '-',
-              style: AppStyles.h2(
-                color: const Color(0xFF08BCE8),
+              '/ 1000',
+              style: AppStyles.bodySmall(
+                color: PlayfulColors.muted,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -511,22 +857,26 @@ class _ScoreValue extends StatelessWidget {
 
 class _RoundHeader extends StatelessWidget {
   const _RoundHeader({
+    required this.state,
     required this.targetTitle,
     required this.targetUrl,
     required this.remainingMs,
-    required this.isRealtimeConnected,
     required this.colorHex,
+    required this.onViewReason,
   });
 
+  final DrawingBoardState state;
   final String targetTitle;
   final String? targetUrl;
   final int remainingMs;
-  final bool isRealtimeConnected;
   final String colorHex;
+  final VoidCallback onViewReason;
 
   @override
   Widget build(BuildContext context) {
     final remainingSeconds = (remainingMs / 1000).ceil();
+    final displayScore = state.displayScore;
+    final isResultMode = state.isWaitingForScore || displayScore != null;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -535,106 +885,139 @@ class _RoundHeader extends StatelessWidget {
         boxShadow: playfulShadow,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: 14.borderRadiusAll,
-              child: SizedBox(
-                width: 58,
-                height: 58,
-                child: ColoredBox(
-                  color: const Color(0xFFF9FCFF),
-                  child: targetUrl == null
-                      ? const SizedBox.shrink()
-                      : Image.network(targetUrl!, fit: BoxFit.contain),
-                ),
-              ),
-            ),
-            10.width,
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+        child: SizedBox(
+          height: 140,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final gap = 12.0;
+              final columnWidth = (constraints.maxWidth - gap) / 2;
+
+              return Row(
                 children: [
-                  Text(
-                    targetTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppStyles.h5(
-                      color: PlayfulColors.ink,
-                      fontWeight: FontWeight.w900,
+                  SizedBox(
+                    width: columnWidth,
+                    height: constraints.maxHeight,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          spacing: 4,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEAF2FF),
+                                borderRadius: 99.borderRadiusAll,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  (isResultMode
+                                          ? LocaleKey.yourResult.tr
+                                          : LocaleKey.yourTarget.tr)
+                                      .toUpperCase(),
+                                  style: AppStyles.caption(
+                                    color: PlayfulColors.blue,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              targetTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppStyles.h4(
+                                color: PlayfulColors.ink,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            if (isResultMode)
+                              _ScoreSummaryRow(
+                                score:
+                                    displayScore?.teamScore ??
+                                    displayScore?.similarityScore,
+                                isCalculating: displayScore == null,
+                                onViewReason: onViewReason,
+                              )
+                            else
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.timer_outlined,
+                                    color: PlayfulColors.blue,
+                                    size: 22,
+                                  ),
+                                  8.width,
+                                  Text(
+                                    _timeLabel(remainingSeconds),
+                                    style: AppStyles.h3(
+                                      color: PlayfulColors.blue,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            Text(
+                              LocaleKey.yourColor.tr,
+                              style: AppStyles.bodySmall(
+                                color: PlayfulColors.ink,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: _colorFromHex(colorHex),
+                                borderRadius: 99.borderRadiusAll,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _colorFromHex(
+                                      colorHex,
+                                    ).withValues(alpha: 0.2),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const SizedBox(width: 82, height: 8),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  3.height,
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.timer_outlined,
-                        color: PlayfulColors.blue,
-                        size: 16,
-                      ),
-                      4.width,
-                      Expanded(
-                        child: Text(
-                          '${LocaleKey.timeRemaining.tr}: ${_timeLabel(remainingSeconds)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppStyles.bodyMedium(
-                            color: PlayfulColors.blue,
-                            fontWeight: FontWeight.w800,
+                  SizedBox(width: gap),
+                  SizedBox(
+                    width: columnWidth,
+                    height: constraints.maxHeight,
+                    child: targetUrl == null
+                        ? Center(
+                            child: Icon(
+                              Icons.image_outlined,
+                              size: 58,
+                              color: PlayfulColors.muted.withValues(
+                                alpha: 0.35,
+                              ),
+                            ),
+                          )
+                        : Image.network(
+                            targetUrl!,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.center,
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  5.height,
-                  ClipRRect(
-                    borderRadius: 99.borderRadiusAll,
-                    child: LinearProgressIndicator(
-                      value: (remainingMs / 60000).clamp(0, 1).toDouble(),
-                      minHeight: 4,
-                      backgroundColor: const Color(0xFFE3EAF5),
-                      color: PlayfulColors.blue,
-                    ),
-                  ),
-                  5.height,
-                  Row(
-                    children: [
-                      Icon(
-                        isRealtimeConnected
-                            ? Icons.wifi_rounded
-                            : Icons.wifi_off_rounded,
-                        size: 15,
-                        color: isRealtimeConnected
-                            ? AppColors.success
-                            : AppColors.colorB8BCC6,
-                      ),
-                      4.width,
-                      Text(
-                        isRealtimeConnected
-                            ? LocaleKey.online.tr
-                            : LocaleKey.offline.tr,
-                        style: AppStyles.bodySmall(
-                          color: isRealtimeConnected
-                              ? AppColors.success
-                              : AppColors.colorB8BCC6,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      12.width,
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _colorFromHex(colorHex),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const SizedBox(width: 12, height: 12),
-                      ),
-                    ],
                   ),
                 ],
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -649,5 +1032,123 @@ class _RoundHeader extends StatelessWidget {
   Color _colorFromHex(String hex) {
     final normalized = hex.replaceFirst('#', '');
     return Color(int.parse('FF$normalized', radix: 16));
+  }
+}
+
+class _ScoreSummaryRow extends StatelessWidget {
+  const _ScoreSummaryRow({
+    required this.score,
+    required this.isCalculating,
+    required this.onViewReason,
+  });
+
+  final int? score;
+  final bool isCalculating;
+  final VoidCallback onViewReason;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isCalculating) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${LocaleKey.score.tr}:',
+            style: AppStyles.bodySmall(
+              color: PlayfulColors.ink,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          2.height,
+          Text(
+            LocaleKey.calculatingScore.tr,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppStyles.bodyMedium(
+              color: PlayfulColors.blue,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${LocaleKey.score.tr}: ${score ?? '-'}',
+          style: AppStyles.h4(
+            color: PlayfulColors.blue,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        8.width,
+        InkWell(
+          borderRadius: 99.borderRadiusAll,
+          onTap: onViewReason,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF2FF),
+              borderRadius: 99.borderRadiusAll,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Icon(
+                Icons.info_outline_rounded,
+                size: 18,
+                color: PlayfulColors.blue,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReasonImageCard extends StatelessWidget {
+  const _ReasonImageCard({required this.title, required this.imageUrl});
+
+  final String title;
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FBFF),
+        borderRadius: 14.borderRadiusAll,
+        border: Border.all(color: const Color(0xFFE4ECF8)),
+      ),
+      child: Padding(
+        padding: 8.paddingAll,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppStyles.caption(
+                color: PlayfulColors.muted,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            8.height,
+            AspectRatio(
+              aspectRatio: 1,
+              child: imageUrl == null
+                  ? Icon(
+                      Icons.image_outlined,
+                      color: PlayfulColors.muted.withValues(alpha: 0.45),
+                    )
+                  : Image.network(imageUrl!, fit: BoxFit.contain),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

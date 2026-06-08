@@ -157,6 +157,18 @@ class DrawingBoardState {
     return isVersus && hasBothVersusSubmissions && scores.isEmpty;
   }
 
+  bool get isWaitingForScore {
+    if (isScoring || canScoreRound) return true;
+    if (isCoop) return teamSubmission != null && teamScore == null;
+    return isVersus && hasBothVersusSubmissions && scores.isEmpty;
+  }
+
+  GameScore? get displayScore => isCoop ? teamScore : currentPlayerScore;
+
+  GameSubmission? get displaySubmission {
+    return isCoop ? teamSubmission : currentPlayerSubmission;
+  }
+
   DrawingBoardState copyWith({
     PageState? pageState,
     GameRoom? room,
@@ -387,6 +399,10 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
     } catch (error) {
       emit(state.copyWith(isScoring: false, errorMessage: error.toString()));
     }
+  }
+
+  Future<String> signedSubmissionUrlFor(GameSubmission submission) {
+    return _submissionRepository.signedUrlFor(submission);
   }
 
   Future<void> disconnectRealtime() async {
@@ -727,6 +743,7 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
       'team_score': score.teamScore,
       'similarity_score': score.similarityScore,
       'winner': score.winner,
+      'rationale': score.rationale,
       'created_at': score.createdAt.toIso8601String(),
     };
   }

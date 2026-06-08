@@ -14,6 +14,7 @@ void main() {
           body: Center(
             child: SizedBox(
               width: 300,
+              height: 420,
               child: SlowDrawingCanvas(
                 roomId: 'room-1',
                 roundId: 'round-1',
@@ -45,6 +46,7 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             width: 300,
+            height: 420,
             child: SlowDrawingCanvas(
               roomId: 'room-1',
               roundId: 'round-1',
@@ -70,6 +72,33 @@ void main() {
 
     expect(customPaint.painter, isNull);
     expect(customPaint.foregroundPainter, isNotNull);
+  });
+
+  testWidgets('SlowDrawingCanvas fills rectangular constraints', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            height: 420,
+            child: SlowDrawingCanvas(
+              roomId: 'room-1',
+              roundId: 'round-1',
+              playerId: 'player-1',
+              colorHex: '#0095FF',
+              segments: <DrawingStrokeSegment>[],
+              enabled: true,
+              onSegment: _noopSegment,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final size = tester.getSize(find.byType(SlowDrawingCanvas));
+    expect(size, const Size(300, 420));
   });
 }
 

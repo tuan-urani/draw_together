@@ -16,6 +16,11 @@ class AppAssets {
   static const String emptyRoomPng = 'assets/images/empty_room.png';
   static const String coOpRoomModePng = 'assets/images/co_op_room_mode.png';
   static const String soloRoomModePng = 'assets/images/solo_room_mode.png';
+  static const String resultWaitingPng = 'assets/images/result_waiting.png';
+  static const String resultStarPng = 'assets/images/result_star.png';
+  static const String starScorePng = 'assets/images/star_score.png';
+  static const String aiBotWaitingGif = 'assets/images/ai_bot_waiting.gif';
+  static const String resultLoadingGif = 'assets/images/result_loading.gif';
 
   static const String iconsInputRequiredSvg =
       'assets/images/icons/input_required.svg';

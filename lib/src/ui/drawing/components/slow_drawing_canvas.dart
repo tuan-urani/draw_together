@@ -1,11 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 import 'package:draw_together/src/core/model/drawing_stroke_segment.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
-import 'package:draw_together/src/locale/locale_key.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
 import 'package:draw_together/src/utils/app_styles.dart';
 
@@ -19,6 +17,7 @@ class SlowDrawingCanvas extends StatefulWidget {
     required this.enabled,
     required this.onSegment,
     this.repaintBoundaryKey,
+    this.lockedOverlay,
     super.key,
   });
 
@@ -30,6 +29,7 @@ class SlowDrawingCanvas extends StatefulWidget {
   final bool enabled;
   final ValueChanged<DrawingStrokeSegment> onSegment;
   final GlobalKey? repaintBoundaryKey;
+  final Widget? lockedOverlay;
 
   @override
   State<SlowDrawingCanvas> createState() => _SlowDrawingCanvasState();
@@ -57,72 +57,56 @@ class _SlowDrawingCanvasState extends State<SlowDrawingCanvas> {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
 
-          return Stack(
-            children: [
-              RepaintBoundary(
-                key: widget.repaintBoundaryKey,
-                child: ClipRRect(
-                  borderRadius: 18.borderRadiusAll,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onPanStart: widget.enabled
-                        ? (details) => _startStroke(details, canvasSize)
-                        : null,
-                    onPanUpdate: widget.enabled
-                        ? (details) => _updateStroke(details, canvasSize)
-                        : null,
-                    onPanEnd: widget.enabled ? (_) => _finishStroke() : null,
-                    onPanCancel: widget.enabled ? _finishStroke : null,
-                    child: SizedBox.expand(
-                      child: CustomPaint(
-                        foregroundPainter: _SlowDrawingPainter(widget.segments),
-                        child: DecoratedBox(
-                          decoration: const BoxDecoration(
-                            color: AppColors.white,
-                          ),
-                          child: Stack(
-                            children: [
-                              const Positioned.fill(
-                                child: CustomPaint(painter: _DotGridPainter()),
-                              ),
-                              if (widget.enabled && widget.segments.isEmpty)
-                                const Center(child: _CanvasEmptyHint()),
-                            ],
-                          ),
+        return Stack(
+          children: [
+            RepaintBoundary(
+              key: widget.repaintBoundaryKey,
+              child: ClipRRect(
+                borderRadius: 18.borderRadiusAll,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanStart: widget.enabled
+                      ? (details) => _startStroke(details, canvasSize)
+                      : null,
+                  onPanUpdate: widget.enabled
+                      ? (details) => _updateStroke(details, canvasSize)
+                      : null,
+                  onPanEnd: widget.enabled ? (_) => _finishStroke() : null,
+                  onPanCancel: widget.enabled ? _finishStroke : null,
+                  child: SizedBox.expand(
+                    child: CustomPaint(
+                      foregroundPainter: _SlowDrawingPainter(widget.segments),
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(color: AppColors.white),
+                        child: Stack(
+                          children: [
+                            const Positioned.fill(
+                              child: CustomPaint(painter: _DotGridPainter()),
+                            ),
+                            if (widget.enabled && widget.segments.isEmpty)
+                              const Center(child: _CanvasEmptyHint()),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              if (!widget.enabled)
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundOverlay,
-                      borderRadius: 18.borderRadiusAll,
-                    ),
-                    child: Center(
-                      child: Text(
-                        LocaleKey.canvasLocked.tr,
-                        style: AppStyles.h4(
-                          color: AppColors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
+            ),
+            if (!widget.enabled && widget.lockedOverlay != null)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: AppColors.black.withValues(alpha: 0.22),
+                  child: widget.lockedOverlay!,
                 ),
-            ],
-          );
-        },
-      ),
+              ),
+          ],
+        );
+      },
     );
   }
 

@@ -54,6 +54,8 @@ class LocaleKey {
   static const String startNewSession = 'startNewSession';
   static const String expiresSoon = 'expiresSoon';
   static const String roomNotFound = 'roomNotFound';
+  static const String yourTarget = 'yourTarget';
+  static const String yourResult = 'yourResult';
   static const String roomClosed = 'roomClosed';
   static const String hostLeftRoom = 'hostLeftRoom';
   static const String matchEnded = 'matchEnded';
@@ -92,6 +94,14 @@ class LocaleKey {
   static const String scoreDrawing = 'scoreDrawing';
   static const String scoringDrawing = 'scoringDrawing';
   static const String scoreReady = 'scoreReady';
+  static const String score = 'score';
+  static const String calculatingScore = 'calculatingScore';
+  static const String viewReason = 'viewReason';
+  static const String scoreReason = 'scoreReason';
+  static const String yourDrawing = 'yourDrawing';
+  static const String aiReviewingArtwork = 'aiReviewingArtwork';
+  static const String comparingShapes = 'comparingShapes';
+  static const String tapToSeeWhy = 'tapToSeeWhy';
   static const String teamScore = 'teamScore';
   static const String waitingForOpponentSubmit = 'waitingForOpponentSubmit';
   static const String waitingForScore = 'waitingForScore';
@@ -100,4 +110,7 @@ class LocaleKey {
   static const String youWin = 'youWin';
   static const String youLose = 'youLose';
   static const String tie = 'tie';
+  static const String betterThanOpponent = 'betterThanOpponent';
+  static const String tryAgainNextRound = 'tryAgainNextRound';
+  static const String bothDrawingsAreClose = 'bothDrawingsAreClose';
 }

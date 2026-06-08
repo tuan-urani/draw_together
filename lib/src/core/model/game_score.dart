@@ -8,6 +8,7 @@ class GameScore {
     required this.createdAt,
     this.userId,
     this.teamScore,
+    this.rationale,
   });
 
   final String id;
@@ -17,6 +18,7 @@ class GameScore {
   final int? teamScore;
   final int similarityScore;
   final bool winner;
+  final String? rationale;
   final DateTime createdAt;
 
   factory GameScore.fromJson(Map<String, dynamic> json) {
@@ -30,6 +32,7 @@ class GameScore {
       similarityScore:
           json['similarity_score'] as int? ?? json['similarityScore'] as int,
       winner: json['winner'] as bool? ?? false,
+      rationale: json['rationale'] as String?,
       createdAt: DateTime.parse(
         json['created_at'] as String? ?? json['createdAt'] as String,
       ),

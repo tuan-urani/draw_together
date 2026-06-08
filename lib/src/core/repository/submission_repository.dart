@@ -96,6 +96,12 @@ class SubmissionRepository {
         .toList();
   }
 
+  Future<String> signedUrlFor(GameSubmission submission) {
+    return _client.storage
+        .from('submissions')
+        .createSignedUrl(submission.imagePath, 60 * 10);
+  }
+
   User _requireUser() {
     final user = _client.auth.currentUser;
     if (user == null) {
