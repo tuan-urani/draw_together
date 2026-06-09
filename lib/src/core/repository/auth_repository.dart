@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:draw_together/src/core/model/player_display_name.dart';
+
 class AuthRepository {
   AuthRepository(this._client);
 
@@ -11,12 +13,13 @@ class AuthRepository {
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
-  Future<User> ensureAnonymousSession({String displayName = 'Player'}) async {
+  Future<User> ensureAnonymousSession({String? displayName}) async {
     final existingUser = currentUser;
     if (existingUser != null) return existingUser;
+    final guestName = displayName ?? PlayerDisplayName.randomName();
 
     final response = await _client.auth.signInAnonymously(
-      data: {'display_name': displayName},
+      data: {'display_name': guestName},
     );
     final user = response.user;
 
@@ -27,8 +30,9 @@ class AuthRepository {
     return user;
   }
 
-  Future<AuthResponse> signInAnonymously({String displayName = 'Player'}) {
-    return _client.auth.signInAnonymously(data: {'display_name': displayName});
+  Future<AuthResponse> signInAnonymously({String? displayName}) {
+    final guestName = displayName ?? PlayerDisplayName.randomName();
+    return _client.auth.signInAnonymously(data: {'display_name': guestName});
   }
 
   Future<void> signOut() {

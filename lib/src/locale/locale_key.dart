@@ -13,8 +13,11 @@ class LocaleKey {
   static const String sessionSetupFailed = 'sessionSetupFailed';
   static const String retry = 'retry';
   static const String unknownError = 'unknownError';
+  static const String editName = 'editName';
+  static const String displayNamePrompt = 'displayNamePrompt';
   static const String displayName = 'displayName';
   static const String displayNameHint = 'displayNameHint';
+  static const String chooseAvatar = 'chooseAvatar';
   static const String save = 'save';
   static const String saving = 'saving';
   static const String signedInAsGuest = 'signedInAsGuest';
@@ -25,8 +28,13 @@ class LocaleKey {
   static const String coopModeTitle = 'coopModeTitle';
   static const String soloModeTitle = 'soloModeTitle';
   static const String joinRoom = 'joinRoom';
+  static const String joinRoomPrompt = 'joinRoomPrompt';
   static const String roomCode = 'roomCode';
   static const String roomCodeHint = 'roomCodeHint';
+  static const String leaveRoom = 'leaveRoom';
+  static const String leaveRoomPrompt = 'leaveRoomPrompt';
+  static const String stay = 'stay';
+  static const String leave = 'leave';
   static const String roomLobby = 'roomLobby';
   static const String inviteFriendsWithRoomCode = 'inviteFriendsWithRoomCode';
   static const String copy = 'copy';
@@ -98,6 +106,9 @@ class LocaleKey {
   static const String calculatingScore = 'calculatingScore';
   static const String viewReason = 'viewReason';
   static const String scoreReason = 'scoreReason';
+  static const String aiFeedback = 'aiFeedback';
+  static const String whyThisScore = 'whyThisScore';
+  static const String aiAnalysisFeedback = 'aiAnalysisFeedback';
   static const String yourDrawing = 'yourDrawing';
   static const String aiReviewingArtwork = 'aiReviewingArtwork';
   static const String comparingShapes = 'comparingShapes';
@@ -107,10 +118,31 @@ class LocaleKey {
   static const String waitingForScore = 'waitingForScore';
   static const String yourScore = 'yourScore';
   static const String opponentScore = 'opponentScore';
+  static const String opponentDrawing = 'opponentDrawing';
   static const String youWin = 'youWin';
   static const String youLose = 'youLose';
   static const String tie = 'tie';
   static const String betterThanOpponent = 'betterThanOpponent';
   static const String tryAgainNextRound = 'tryAgainNextRound';
   static const String bothDrawingsAreClose = 'bothDrawingsAreClose';
+  static const String history = 'history';
+  static const String historySubtitle = 'historySubtitle';
+  static const String historyDetail = 'historyDetail';
+  static const String historyCoopWith = 'historyCoopWith';
+  static const String historySoloWith = 'historySoloWith';
+  static const String unknownPlayer = 'unknownPlayer';
+  static const String noHistoryYet = 'noHistoryYet';
+  static const String noHistoryHint = 'noHistoryHint';
+  static const String settingsTitle = 'settingsTitle';
+  static const String settingsSubtitle = 'settingsSubtitle';
+  static const String settingsAudio = 'settingsAudio';
+  static const String settingsBackgroundMusic = 'settingsBackgroundMusic';
+  static const String settingsSoundEffects = 'settingsSoundEffects';
+  static const String settingsToggleOn = 'settingsToggleOn';
+  static const String settingsSupport = 'settingsSupport';
+  static const String settingsPrivacyPolicy = 'settingsPrivacyPolicy';
+  static const String settingsTermsOfUse = 'settingsTermsOfUse';
+  static const String settingsDeleteAccount = 'settingsDeleteAccount';
+  static const String settingsDeleteAccountSubtitle =
+      'settingsDeleteAccountSubtitle';
 }

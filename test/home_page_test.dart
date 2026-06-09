@@ -51,13 +51,13 @@ void main() {
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
 
-    expect(find.text('Name'), findsOneWidget);
+    expect(find.text('Edit Name'), findsOneWidget);
     expect(tester.takeException(), isNull, reason: 'Dialog must open cleanly.');
 
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Name'), findsNothing);
+    expect(find.text('Edit Name'), findsNothing);
     expect(
       tester.takeException(),
       isNull,
@@ -70,7 +70,7 @@ class _FakeProfileRepository extends ProfileRepository {
   _FakeProfileRepository(super.client);
 
   @override
-  Future<Profile> ensureCurrentProfile({String displayName = 'Player'}) async {
+  Future<Profile> ensureCurrentProfile({String? displayName}) async {
     return const Profile(id: 'profile-id', displayName: 'Player1');
   }
 }

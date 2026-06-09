@@ -99,7 +99,9 @@ class RoomRepository {
   Future<List<RoomPlayer>> listRoomPlayers(String roomId) async {
     final rows = await _client
         .from('room_players')
-        .select('room_id,user_id,seat,joined_at,left_at,profiles(display_name)')
+        .select(
+          'room_id,user_id,seat,joined_at,left_at,profiles(display_name,avatar_url)',
+        )
         .eq('room_id', roomId)
         .isFilter('left_at', null)
         .order('seat');

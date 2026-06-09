@@ -1,7 +1,7 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/locale/locale_key.dart';
+import 'package:draw_together/src/ui/widgets/app_playful_dialog.dart';
 
 class DialogSuccess extends StatelessWidget {
   final String message;
@@ -17,15 +17,15 @@ class DialogSuccess extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoAlertDialog(
-      content: Padding(
-        padding: 10.paddingVertical,
-        child: Text(message, style: const TextStyle(fontSize: 16)),
-      ),
+    return AppPlayfulDialog(
+      title: LocaleKey.success.tr,
+      subtitle: message,
+      tone: AppPlayfulDialogTone.success,
+      showCloseButton: false,
       actions: [
-        CupertinoDialogAction(
-          onPressed: onConfirmPressed ?? () => Navigator.pop(context),
-          child: Text(textConfirm ?? LocaleKey.ok.tr),
+        AppPlayfulDialogButton(
+          label: textConfirm ?? LocaleKey.ok.tr,
+          onTap: onConfirmPressed ?? () => Navigator.pop(context),
         ),
       ],
     );

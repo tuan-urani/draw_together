@@ -7,11 +7,13 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/locale/locale_key.dart';
 import 'package:draw_together/src/ui/base/interactor/page_states.dart';
 import 'package:draw_together/src/ui/drawing/bloc/drawing_board_bloc.dart';
 import 'package:draw_together/src/ui/drawing/components/slow_drawing_canvas.dart';
+import 'package:draw_together/src/ui/widgets/app_playful_dialog.dart';
 import 'package:draw_together/src/ui/widgets/base/toast/app_toast.dart';
 import 'package:draw_together/src/ui/widgets/playful_ui.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
@@ -151,12 +153,6 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
                       leading: PlayfulIconButton(
                         icon: Icons.arrow_back_ios_new_rounded,
                         onTap: _handleBack,
-                        size: 44,
-                      ),
-                      trailing: PlayfulIconButton(
-                        icon: Icons.more_horiz_rounded,
-                        onTap: () {},
-                        size: 44,
                       ),
                     ),
                     8.height,
@@ -177,12 +173,6 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
                   leading: PlayfulIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: _handleBack,
-                    size: 44,
-                  ),
-                  trailing: PlayfulIconButton(
-                    icon: Icons.more_horiz_rounded,
-                    onTap: () {},
-                    size: 44,
                   ),
                 ),
                 8.height,
@@ -282,13 +272,15 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
   Future<void> _showMatchEndedDialog(DrawingBoardState state) async {
     await Get.dialog<void>(
-      AlertDialog(
-        title: Text(LocaleKey.matchEnded.tr),
-        content: Text(LocaleKey.opponentDisconnected.tr),
+      AppPlayfulDialog(
+        title: LocaleKey.matchEnded.tr,
+        subtitle: LocaleKey.opponentDisconnected.tr,
+        tone: AppPlayfulDialogTone.warning,
+        showCloseButton: false,
         actions: [
-          TextButton(
-            onPressed: () => Get.back<void>(),
-            child: Text(LocaleKey.ok.tr),
+          AppPlayfulDialogButton(
+            label: LocaleKey.ok.tr,
+            onTap: () => Get.back<void>(),
           ),
         ],
       ),
@@ -308,8 +300,10 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
     if (!mounted) return;
 
     await Get.dialog<void>(
-      AlertDialog(
-        title: Text(LocaleKey.scoreReason.tr),
+      AppPlayfulDialog(
+        title: LocaleKey.scoreReason.tr,
+        tone: AppPlayfulDialogTone.info,
+        maxWidth: 430,
         content: SizedBox(
           width: double.maxFinite,
           child: Column(
@@ -334,22 +328,21 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
                 ],
               ),
               16.height,
-              Text(
-                score.rationale?.trim().isNotEmpty == true
-                    ? score.rationale!.trim()
-                    : LocaleKey.scoreReady.tr,
-                style: AppStyles.bodyMedium(
-                  color: PlayfulColors.muted,
-                  fontWeight: FontWeight.w700,
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: min(240, MediaQuery.sizeOf(context).height * 0.34),
+                ),
+                child: SingleChildScrollView(
+                  child: _ScoreReasonBullets(reasons: score.rationale),
                 ),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back<void>(),
-            child: Text(LocaleKey.ok.tr),
+          AppPlayfulDialogButton(
+            label: LocaleKey.ok.tr,
+            onTap: () => Get.back<void>(),
           ),
         ],
       ),
@@ -358,6 +351,9 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
   Future<void> _handleBack() async {
     if (_isLeavingMatch) return;
+    final shouldLeave = await _confirmLeave();
+    if (!mounted || !shouldLeave) return;
+
     _isLeavingMatch = true;
     _autoSubmitTimer?.cancel();
 
@@ -372,6 +368,29 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
 
     if (!mounted) return;
     _goToRoomBrowser(mode);
+  }
+
+  Future<bool> _confirmLeave() async {
+    final result = await Get.dialog<bool>(
+      AppPlayfulDialog(
+        title: LocaleKey.leaveRoom.tr,
+        subtitle: LocaleKey.leaveRoomPrompt.tr,
+        tone: AppPlayfulDialogTone.danger,
+        actions: [
+          AppPlayfulDialogButton(
+            label: LocaleKey.stay.tr,
+            style: AppPlayfulDialogButtonStyle.soft,
+            onTap: () => Get.back<bool>(result: false),
+          ),
+          AppPlayfulDialogButton(
+            label: LocaleKey.leave.tr,
+            style: AppPlayfulDialogButtonStyle.danger,
+            onTap: () => Get.back<bool>(result: true),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   void _goToRoomBrowser(Object? mode) {
@@ -415,6 +434,58 @@ class _RoundStatusBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ScoreReasonBullets extends StatelessWidget {
+  const _ScoreReasonBullets({required this.reasons});
+
+  final List<String> reasons;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reasons.isEmpty) {
+      return Text(
+        LocaleKey.scoreReady.tr,
+        style: AppStyles.bodyMedium(
+          color: PlayfulColors.muted,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: reasons
+          .map(
+            (reason) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '\u2022',
+                    style: AppStyles.bodyMedium(
+                      color: PlayfulColors.muted,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  8.width,
+                  Expanded(
+                    child: Text(
+                      reason,
+                      style: AppStyles.bodyMedium(
+                        color: PlayfulColors.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(growable: false),
     );
   }
 }
@@ -503,25 +574,16 @@ class _ResultReviewPanel extends StatelessWidget {
                         ],
                       ),
                       6.height,
-                      Text(
-                        LocaleKey.comparingShapes.tr,
-                        textAlign: TextAlign.center,
-                        style: AppStyles.bodyMedium(
-                          color: PlayfulColors.muted,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      Image.asset(
+                        AppAssets.resultLoadingGif,
+                        width: 120,
+                        height: 38,
+                        fit: BoxFit.contain,
                       ),
                     ],
                   ),
                 ),
               ),
-              // 16.height,
-              // Image.asset(
-              //   AppAssets.resultLoadingGif,
-              //   width: 120,
-              //   height: 38,
-              //   fit: BoxFit.contain,
-              // ),
             ] else ...[
               if (isVersus)
                 _VersusScorePanel(
@@ -529,6 +591,7 @@ class _ResultReviewPanel extends StatelessWidget {
                   opponentScore: opponentScore ?? 0,
                   isWinner: isWinner,
                   isTie: isTie,
+                  onViewReason: onViewReason,
                 )
               else
                 DecoratedBox(
@@ -544,20 +607,13 @@ class _ResultReviewPanel extends StatelessWidget {
                     ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
                     child: Column(
                       children: [
-                        Image.asset(
-                          AppAssets.starScorePng,
-                          width: 62,
-                          height: 62,
-                          fit: BoxFit.contain,
-                        ),
-                        8.height,
                         Text(
                           LocaleKey.scoreReady.tr,
                           textAlign: TextAlign.center,
-                          style: AppStyles.h2(
+                          style: AppStyles.h4(
                             color: PlayfulColors.ink,
                             fontWeight: FontWeight.w900,
                           ),
@@ -568,16 +624,16 @@ class _ResultReviewPanel extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '${score! * 10}',
+                              '${score!}',
                               style: AppStyles.h1(
-                                color: const Color(0xFF58D96C),
+                                color: PlayfulColors.blue,
                                 fontWeight: FontWeight.w900,
                                 height: 1,
                               ),
                             ),
                             8.width,
                             Text(
-                              '/ 1000',
+                              '/ 100',
                               style: AppStyles.h3(
                                 color: const Color(0xFFA8B0C2),
                                 fontWeight: FontWeight.w800,
@@ -586,58 +642,12 @@ class _ResultReviewPanel extends StatelessWidget {
                             ),
                           ],
                         ),
+                        18.height,
+                        _AiFeedbackButton(onTap: onViewReason),
                       ],
                     ),
                   ),
                 ),
-              16.height,
-              InkWell(
-                borderRadius: 999.borderRadiusAll,
-                onTap: onViewReason,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withValues(alpha: 0.96),
-                    borderRadius: 999.borderRadiusAll,
-                    boxShadow: [
-                      BoxShadow(
-                        color: PlayfulColors.ink.withValues(alpha: 0.12),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.description_outlined,
-                          color: PlayfulColors.blue,
-                          size: 24,
-                        ),
-                        12.width,
-                        Text(
-                          LocaleKey.tapToSeeWhy.tr,
-                          style: AppStyles.h4(
-                            color: PlayfulColors.blue,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        12.width,
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          color: PlayfulColors.blue,
-                          size: 28,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             ],
           ],
         ),
@@ -652,12 +662,14 @@ class _VersusScorePanel extends StatelessWidget {
     required this.opponentScore,
     required this.isWinner,
     required this.isTie,
+    required this.onViewReason,
   });
 
   final int score;
   final int opponentScore;
   final bool isWinner;
   final bool isTie;
+  final VoidCallback onViewReason;
 
   @override
   Widget build(BuildContext context) {
@@ -676,7 +688,7 @@ class _VersusScorePanel extends StatelessWidget {
         : isWinner
         ? const Color(0xFF35C759)
         : const Color(0xFFFF4D4F);
-    final diff = (score - opponentScore).abs() * 10;
+    final diff = (score - opponentScore).abs();
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -694,13 +706,6 @@ class _VersusScorePanel extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         child: Column(
           children: [
-            Image.asset(
-              AppAssets.starScorePng,
-              width: 54,
-              height: 54,
-              fit: BoxFit.contain,
-            ),
-            8.height,
             Text(
               resultTitle,
               textAlign: TextAlign.center,
@@ -790,7 +795,74 @@ class _VersusScorePanel extends StatelessWidget {
                 ),
               ),
             ),
+            16.height,
+            _AiFeedbackButton(onTap: onViewReason),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AiFeedbackButton extends StatelessWidget {
+  const _AiFeedbackButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: InkWell(
+        borderRadius: 16.borderRadiusAll,
+        onTap: AppAudioTap.wrap(onTap),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [PlayfulColors.cyan, PlayfulColors.blue],
+            ),
+            borderRadius: 16.borderRadiusAll,
+            boxShadow: [
+              BoxShadow(
+                color: PlayfulColors.blue.withValues(alpha: 0.28),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.description_outlined,
+                  color: AppColors.white,
+                  size: 22,
+                ),
+                10.width,
+                Flexible(
+                  child: Text(
+                    LocaleKey.aiFeedback.tr,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppStyles.h5(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                10.width,
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.white,
+                  size: 26,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -842,7 +914,7 @@ class _VersusMiniScoreCard extends StatelessWidget {
             ),
             4.height,
             Text(
-              '/ 1000',
+              '/ 100',
               style: AppStyles.bodySmall(
                 color: PlayfulColors.muted,
                 fontWeight: FontWeight.w700,
@@ -907,28 +979,6 @@ class _RoundHeader extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEAF2FF),
-                                borderRadius: 99.borderRadiusAll,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                child: Text(
-                                  (isResultMode
-                                          ? LocaleKey.yourResult.tr
-                                          : LocaleKey.yourTarget.tr)
-                                      .toUpperCase(),
-                                  style: AppStyles.caption(
-                                    color: PlayfulColors.blue,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ),
                             Text(
                               targetTitle,
                               maxLines: 1,
@@ -1087,7 +1137,7 @@ class _ScoreSummaryRow extends StatelessWidget {
         8.width,
         InkWell(
           borderRadius: 99.borderRadiusAll,
-          onTap: onViewReason,
+          onTap: AppAudioTap.wrap(onViewReason),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: const Color(0xFFEAF2FF),

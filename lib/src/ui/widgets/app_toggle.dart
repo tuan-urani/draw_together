@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
 
@@ -35,7 +37,7 @@ class AppToggle extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => onChanged(!value),
+      onTap: AppAudioTap.wrap(() => onChanged(!value)),
       child: SizedBox(
         width: width,
         height: height,

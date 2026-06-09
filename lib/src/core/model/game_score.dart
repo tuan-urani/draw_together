@@ -6,9 +6,9 @@ class GameScore {
     required this.similarityScore,
     required this.winner,
     required this.createdAt,
+    this.rationale = const <String>[],
     this.userId,
     this.teamScore,
-    this.rationale,
   });
 
   final String id;
@@ -18,7 +18,7 @@ class GameScore {
   final int? teamScore;
   final int similarityScore;
   final bool winner;
-  final String? rationale;
+  final List<String> rationale;
   final DateTime createdAt;
 
   factory GameScore.fromJson(Map<String, dynamic> json) {
@@ -32,10 +32,26 @@ class GameScore {
       similarityScore:
           json['similarity_score'] as int? ?? json['similarityScore'] as int,
       winner: json['winner'] as bool? ?? false,
-      rationale: json['rationale'] as String?,
+      rationale: _rationaleFromJson(json['rationale']),
       createdAt: DateTime.parse(
         json['created_at'] as String? ?? json['createdAt'] as String,
       ),
     );
+  }
+
+  static List<String> _rationaleFromJson(Object? value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList(growable: false);
+    }
+
+    if (value is String) {
+      final rationale = value.trim();
+      return rationale.isEmpty ? const <String>[] : <String>[rationale];
+    }
+
+    return const <String>[];
   }
 }

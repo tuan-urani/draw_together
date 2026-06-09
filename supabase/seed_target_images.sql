@@ -8,6 +8,9 @@ insert into public.target_images (
   height,
   mime_type,
   checksum,
+  stroke_color,
+  player1_color,
+  player2_color,
   active
 )
 values
@@ -21,6 +24,9 @@ values
     1024,
     'image/png',
     'ec0129cbd02cc6243959be202051811ffdf27e2906d4ad9d146eeb40b10103dd',
+    '#1F2937',
+    null,
+    null,
     true
   ),
   (
@@ -33,6 +39,9 @@ values
     1024,
     'image/png',
     '6f27176e4eaab36e3b2068f53d3db3667940228a7394b95fafeb23d1fb3e6dca',
+    '#1F2937',
+    null,
+    null,
     true
   ),
   (
@@ -45,6 +54,9 @@ values
     1024,
     'image/png',
     '7830c47e36ad73ac94ea424c22f1f3d5d6a5d2fc06c7c4b2a77fd729ad69bc3e',
+    '#1F2937',
+    null,
+    null,
     true
   ),
   (
@@ -57,6 +69,9 @@ values
     1024,
     'image/png',
     'e20a90a7aa1c69f20461e83ef6ba17496fd7126b86e80684ca692b2dd93c211d',
+    '#1F2937',
+    null,
+    null,
     true
   ),
   (
@@ -69,6 +84,9 @@ values
     1024,
     'image/png',
     '718f0500a9bf24f7abeb4b97f9c064d748553287c1bd4ed0394e22a6fcb253fc',
+    null,
+    '#1F2937',
+    '#EF4056',
     true
   )
 on conflict (id) do update set
@@ -80,4 +98,7 @@ on conflict (id) do update set
   height = excluded.height,
   mime_type = excluded.mime_type,
   checksum = excluded.checksum,
+  stroke_color = excluded.stroke_color,
+  player1_color = excluded.player1_color,
+  player2_color = excluded.player2_color,
   active = excluded.active;

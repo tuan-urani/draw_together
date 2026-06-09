@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/utils/app_assets.dart';
 
 class AppRadioOption {
@@ -42,7 +44,7 @@ class AppRadioGroup extends StatelessWidget {
 
         return Expanded(
           child: InkWell(
-            onTap: () => onChanged(option.value),
+            onTap: AppAudioTap.wrap(() => onChanged(option.value)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,

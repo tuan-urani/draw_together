@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
+import 'dart:math' as math;
 
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/core/model/game_room.dart';
 import 'package:draw_together/src/core/model/joinable_room.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
@@ -112,7 +114,6 @@ class _RoomBrowserHeader extends StatelessWidget {
             PlayfulIconButton(
               icon: Icons.arrow_back_ios_new_rounded,
               onTap: Get.back<void>,
-              size: 36,
             ),
           ],
         ),
@@ -123,7 +124,7 @@ class _RoomBrowserHeader extends StatelessWidget {
               child: Text(
                 LocaleKey.roomLobby.tr,
                 textAlign: TextAlign.left,
-                style: AppStyles.h5(
+                style: AppStyles.h4(
                   color: PlayfulColors.ink,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -138,7 +139,7 @@ class _RoomBrowserHeader extends StatelessWidget {
         Text(
           LocaleKey.inviteFriendsWithRoomCode.tr,
           textAlign: TextAlign.left,
-          style: AppStyles.bodySmall(
+          style: AppStyles.bodyMedium(
             color: PlayfulColors.muted,
             fontWeight: FontWeight.w600,
             height: 1,
@@ -158,7 +159,7 @@ class _HeaderCreateButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: isLoading ? null : onTap,
+      onTap: isLoading ? null : AppAudioTap.wrap(onTap),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppColors.white.withValues(alpha: 0.94),
@@ -178,7 +179,7 @@ class _HeaderCreateButton extends StatelessWidget {
               6.width,
               Text(
                 LocaleKey.create.tr,
-                style: AppStyles.bodySmall(
+                style: AppStyles.bodyMedium(
                   color: isLoading ? PlayfulColors.muted : PlayfulColors.blue,
                   fontWeight: FontWeight.w900,
                 ),
@@ -314,7 +315,7 @@ class _RoomModeTab extends StatelessWidget {
     final activeColor = selected ? color : PlayfulColors.muted;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: AppAudioTap.wrap(onTap),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: selected ? AppColors.white : AppColors.transparent,
@@ -333,7 +334,7 @@ class _RoomModeTab extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppStyles.bodyLarge(
+                  style: AppStyles.bodyMedium(
                     color: activeColor,
                     fontWeight: FontWeight.w900,
                   ),
@@ -354,7 +355,7 @@ class _AvailableRoomsTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       LocaleKey.availableRooms.tr.toUpperCase(),
-      style: AppStyles.bodyLarge(
+      style: AppStyles.bodyMedium(
         color: PlayfulColors.muted,
         fontWeight: FontWeight.w900,
       ),
@@ -367,10 +368,16 @@ class _EmptyRoomsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
+    final emptyStateHeight = math.max(
+      320.0,
+      MediaQuery.sizeOf(context).height * 0.42,
+    );
+
+    return SizedBox(
+      height: emptyStateHeight,
       child: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               width: 190,
@@ -381,7 +388,7 @@ class _EmptyRoomsCard extends StatelessWidget {
             Text(
               LocaleKey.noRoomsAvailable.tr,
               textAlign: TextAlign.center,
-              style: AppStyles.bodyMedium(
+              style: AppStyles.bodyLarge(
                 color: PlayfulColors.ink,
                 fontWeight: FontWeight.w900,
               ),
@@ -390,7 +397,7 @@ class _EmptyRoomsCard extends StatelessWidget {
             Text(
               LocaleKey.noRoomsAvailableHint.tr,
               textAlign: TextAlign.center,
-              style: AppStyles.bodySmall(
+              style: AppStyles.bodyMedium(
                 color: PlayfulColors.muted,
                 fontWeight: FontWeight.w600,
               ),
@@ -427,7 +434,7 @@ class _JoinableRoomCard extends StatelessWidget {
         : '${minutesLeft}m left';
 
     return GestureDetector(
-      onTap: actionsDisabled ? null : onJoin,
+      onTap: actionsDisabled ? null : AppAudioTap.wrap(onJoin),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
@@ -542,29 +549,17 @@ class _CreateRoomModeSheetState extends State<_CreateRoomModeSheet> {
             Stack(
               alignment: Alignment.center,
               children: [
-                Column(
-                  children: [
-                    Text(
-                      LocaleKey.createRoom.tr,
-                      style: AppStyles.h5(
-                        color: PlayfulColors.ink,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    4.height,
-                    Text(
-                      LocaleKey.chooseGameMode.tr,
-                      style: AppStyles.bodySmall(
-                        color: PlayfulColors.muted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                Text(
+                  LocaleKey.chooseGameMode.tr,
+                  style: AppStyles.h5(
+                    color: PlayfulColors.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: AppAudioTap.wrap(() => Navigator.of(context).pop()),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: PlayfulColors.lobbySeatInactive,
@@ -593,7 +588,6 @@ class _CreateRoomModeSheetState extends State<_CreateRoomModeSheet> {
                   imageAsset: AppAssets.coOpRoomModePng,
                   selected: _selectedMode == RoomMode.coop,
                   accentColor: PlayfulColors.blue,
-                  recommended: true,
                   onTap: () => setState(() => _selectedMode = RoomMode.coop),
                 ),
                 10.height,
@@ -603,14 +597,15 @@ class _CreateRoomModeSheetState extends State<_CreateRoomModeSheet> {
                   imageAsset: AppAssets.soloRoomModePng,
                   selected: _selectedMode == RoomMode.versus,
                   accentColor: PlayfulColors.lobbyPurple,
-                  recommended: false,
                   onTap: () => setState(() => _selectedMode = RoomMode.versus),
                 ),
               ],
             ),
             22.height,
             GestureDetector(
-              onTap: () => Navigator.of(context).pop(_selectedMode),
+              onTap: AppAudioTap.wrap(
+                () => Navigator.of(context).pop(_selectedMode),
+              ),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: PlayfulColors.coopCardGradient,
@@ -652,7 +647,6 @@ class _CreateRoomModeOption extends StatelessWidget {
     required this.imageAsset,
     required this.selected,
     required this.accentColor,
-    required this.recommended,
     required this.onTap,
   });
 
@@ -661,13 +655,12 @@ class _CreateRoomModeOption extends StatelessWidget {
   final String imageAsset;
   final bool selected;
   final Color accentColor;
-  final bool recommended;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: AppAudioTap.wrap(onTap),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppColors.white,
@@ -689,11 +682,11 @@ class _CreateRoomModeOption extends StatelessWidget {
                   borderRadius: 10.borderRadiusAll,
                 ),
                 child: SizedBox(
-                  width: 58,
-                  height: 58,
+                  width: 72,
+                  height: 72,
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Image.asset(imageAsset, fit: BoxFit.contain),
+                    padding: const EdgeInsets.all(5),
+                    child: Image.asset(imageAsset, fit: BoxFit.cover),
                   ),
                 ),
               ),
@@ -702,24 +695,14 @@ class _CreateRoomModeOption extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppStyles.bodyMedium(
-                              color: PlayfulColors.ink,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        if (recommended) ...[
-                          6.width,
-                          const _RecommendedBadge(),
-                        ],
-                      ],
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppStyles.bodyMedium(
+                        color: PlayfulColors.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     6.height,
                     Text(
@@ -761,30 +744,6 @@ class _CreateRoomModeOption extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecommendedBadge extends StatelessWidget {
-  const _RecommendedBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: PlayfulColors.blue.withValues(alpha: 0.12),
-        borderRadius: 5.borderRadiusAll,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-        child: Text(
-          LocaleKey.recommended.tr,
-          style: AppStyles.caption(
-            color: PlayfulColors.blue,
-            fontWeight: FontWeight.w900,
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/core/model/game_room.dart';
 import 'package:draw_together/src/core/model/room_player.dart';
 import 'package:draw_together/src/core/model/room_presence.dart';
@@ -10,6 +11,7 @@ import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/locale/locale_key.dart';
 import 'package:draw_together/src/ui/base/interactor/page_states.dart';
 import 'package:draw_together/src/ui/room/bloc/room_lobby_bloc.dart';
+import 'package:draw_together/src/ui/widgets/app_playful_dialog.dart';
 import 'package:draw_together/src/ui/widgets/base/toast/app_toast.dart';
 import 'package:draw_together/src/ui/widgets/playful_ui.dart';
 import 'package:draw_together/src/utils/app_assets.dart';
@@ -218,6 +220,9 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
 
   Future<void> _handleBack() async {
     if (_isLeavingRoom) return;
+    final shouldLeave = await _confirmLeave();
+    if (!mounted || !shouldLeave) return;
+
     _isLeavingRoom = true;
 
     final mode = _bloc.state.room?.mode ?? RoomMode.coop;
@@ -228,13 +233,15 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
 
   Future<void> _showRoomEndedDialog(RoomMode? mode) async {
     await Get.dialog<void>(
-      AlertDialog(
-        title: Text(LocaleKey.roomClosed.tr),
-        content: Text(LocaleKey.hostLeftRoom.tr),
+      AppPlayfulDialog(
+        title: LocaleKey.roomClosed.tr,
+        subtitle: LocaleKey.hostLeftRoom.tr,
+        tone: AppPlayfulDialogTone.warning,
+        showCloseButton: false,
         actions: [
-          TextButton(
-            onPressed: () => Get.back<void>(),
-            child: Text(LocaleKey.ok.tr),
+          AppPlayfulDialogButton(
+            label: LocaleKey.ok.tr,
+            onTap: () => Get.back<void>(),
           ),
         ],
       ),
@@ -243,6 +250,29 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
 
     if (!mounted) return;
     _goToRoomBrowser(mode ?? RoomMode.coop);
+  }
+
+  Future<bool> _confirmLeave() async {
+    final result = await Get.dialog<bool>(
+      AppPlayfulDialog(
+        title: LocaleKey.leaveRoom.tr,
+        subtitle: LocaleKey.leaveRoomPrompt.tr,
+        tone: AppPlayfulDialogTone.danger,
+        actions: [
+          AppPlayfulDialogButton(
+            label: LocaleKey.stay.tr,
+            style: AppPlayfulDialogButtonStyle.soft,
+            onTap: () => Get.back<bool>(result: false),
+          ),
+          AppPlayfulDialogButton(
+            label: LocaleKey.leave.tr,
+            style: AppPlayfulDialogButtonStyle.danger,
+            onTap: () => Get.back<bool>(result: true),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   void _goToRoomBrowser(RoomMode mode) {
@@ -282,38 +312,12 @@ class _LobbyHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: _CircleActionButton(
+            child: PlayfulIconButton(
               icon: Icons.arrow_back_ios_new_rounded,
               onTap: onBack,
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CircleActionButton extends StatelessWidget {
-  const _CircleActionButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.white.withValues(alpha: 0.96),
-          shape: BoxShape.circle,
-          boxShadow: _lobbyShadow,
-        ),
-        child: SizedBox(
-          width: 54,
-          height: 54,
-          child: Icon(icon, color: PlayfulColors.lobbyPurple, size: 24),
-        ),
       ),
     );
   }
@@ -410,10 +414,10 @@ class _CopyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () async {
+      onTap: AppAudioTap.wrap(() async {
         await Clipboard.setData(ClipboardData(text: code));
         showSuccessToast(LocaleKey.copied.tr);
-      },
+      }),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppColors.white,
@@ -668,6 +672,9 @@ class _PlayerRow extends StatelessWidget {
         player?.displayName ??
         presence?.displayName ??
         LocaleKey.waitingForPlayer.tr;
+    final avatarAsset = AppAssets.avatarPngs.contains(player?.avatarUrl)
+        ? player!.avatarUrl!
+        : AppAssets.defaultAvatarPng;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -682,7 +689,11 @@ class _PlayerRow extends StatelessWidget {
             12.width,
             isWaiting
                 ? const _WaitingAvatar()
-                : PlayfulAvatar(size: 52, online: isOnline),
+                : PlayfulAvatar(
+                    size: 52,
+                    online: isOnline,
+                    imageAsset: avatarAsset,
+                  ),
             14.width,
             Expanded(
               child: Text(
@@ -813,7 +824,7 @@ class _LobbyNoticeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: canStartRound ? onStart : null,
+      onTap: canStartRound ? AppAudioTap.wrap(onStart) : null,
       child: _LobbySurface(
         radius: 20,
         padding: EdgeInsets.zero,
@@ -944,7 +955,7 @@ class _LobbyPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onTap != null;
     return GestureDetector(
-      onTap: onTap,
+      onTap: AppAudioTap.wrap(onTap),
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: enabled

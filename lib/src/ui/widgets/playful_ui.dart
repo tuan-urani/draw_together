@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
+import 'package:draw_together/src/utils/app_assets.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
 import 'package:draw_together/src/utils/app_styles.dart';
 
@@ -26,6 +28,14 @@ class PlayfulColors {
   static const Color lobbyBorder = Color(0xFFDCE8F8);
   static const Color lobbyWarning = Color(0xFFFFB62D);
   static const Color lobbyWarningSoft = Color(0xFFFFEBC0);
+  static const Color settingsBlueSoft = Color(0xFFEAF5FF);
+  static const Color settingsPurple = Color(0xFF8E3EF1);
+  static const Color settingsPurpleSoft = Color(0xFFF5EEFF);
+  static const Color settingsGold = Color(0xFFFFC53D);
+  static const Color settingsGoldSoft = Color(0xFFFFF4DC);
+  static const Color settingsDanger = Color(0xFFEF1F2F);
+  static const Color settingsDangerSoft = Color(0xFFFFE9EC);
+  static const Color settingsDivider = Color(0xFFE7EEF8);
 
   static const LinearGradient coopCardGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -83,37 +93,33 @@ class PlayfulHeader extends StatelessWidget {
           : const EdgeInsets.fromLTRB(20, 12, 20, 10),
       child: Row(
         children: [
-          leading ?? SizedBox(width: compact ? 44 : 54),
+          leading ?? const SizedBox(width: 42),
           Expanded(
             child: Column(
               children: [
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: compact
-                      ? AppStyles.h3(
-                          color: PlayfulColors.ink,
-                          fontWeight: FontWeight.w800,
-                        )
-                      : AppStyles.h1(
-                          color: PlayfulColors.ink,
-                          fontWeight: FontWeight.w800,
-                        ),
+                  style: AppStyles.h4(
+                    color: PlayfulColors.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 if (subtitle != null) ...[
                   (compact ? 4 : 8).height,
                   Text(
                     subtitle!,
                     textAlign: TextAlign.center,
-                    style: compact
-                        ? AppStyles.bodyMedium(color: PlayfulColors.muted)
-                        : AppStyles.bodyLarge(color: PlayfulColors.muted),
+                    style: AppStyles.bodyMedium(
+                      color: PlayfulColors.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ],
             ),
           ),
-          trailing ?? SizedBox(width: compact ? 44 : 54),
+          trailing ?? const SizedBox(width: 42),
         ],
       ),
     );
@@ -124,7 +130,7 @@ class PlayfulIconButton extends StatelessWidget {
   const PlayfulIconButton({
     required this.icon,
     required this.onTap,
-    this.size = 54,
+    this.size = 42,
     super.key,
   });
 
@@ -135,7 +141,7 @@ class PlayfulIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: AppAudioTap.wrap(onTap),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppColors.white,
@@ -145,7 +151,7 @@ class PlayfulIconButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: Icon(icon, color: PlayfulColors.ink, size: size * 0.42),
+          child: Icon(icon, color: PlayfulColors.ink, size: size * 0.5),
         ),
       ),
     );
@@ -210,7 +216,7 @@ class PlayfulGradientButton extends StatelessWidget {
         : const LinearGradient(colors: [Color(0xFFEAEAEA), Color(0xFFE0E0E0)]);
 
     return GestureDetector(
-      onTap: enabled ? onTap : null,
+      onTap: enabled ? AppAudioTap.wrap(onTap) : null,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: colors,
@@ -242,10 +248,16 @@ class PlayfulGradientButton extends StatelessWidget {
 }
 
 class PlayfulAvatar extends StatelessWidget {
-  const PlayfulAvatar({this.size = 78, this.online = true, super.key});
+  const PlayfulAvatar({
+    this.size = 78,
+    this.online = true,
+    this.imageAsset = AppAssets.defaultAvatarPng,
+    super.key,
+  });
 
   final double size;
   final bool online;
+  final String imageAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +274,15 @@ class PlayfulAvatar extends StatelessWidget {
           child: SizedBox(
             width: size,
             height: size,
-            child: CustomPaint(painter: _DinoPainter()),
+            child: ClipOval(
+              child: Image.asset(
+                imageAsset,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(AppAssets.defaultAvatarPng);
+                },
+              ),
+            ),
           ),
         ),
         if (online)
@@ -442,69 +462,4 @@ class _DoodleBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _DinoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final scale = size.shortestSide / 100;
-    canvas.save();
-    canvas.scale(scale);
-
-    final body = Paint()..color = const Color(0xFF2FA8FF);
-    final shadow = Paint()..color = const Color(0xFF1785E8);
-    final spike = Paint()..color = const Color(0xFFFFC544);
-    final cheek = Paint()..color = const Color(0xFFFF86B6);
-    final ink = Paint()..color = PlayfulColors.ink;
-
-    final bodyPath = Path()
-      ..moveTo(51, 20)
-      ..cubicTo(28, 20, 20, 39, 24, 62)
-      ..cubicTo(27, 83, 43, 91, 62, 88)
-      ..cubicTo(79, 85, 87, 72, 83, 52)
-      ..cubicTo(80, 33, 68, 20, 51, 20)
-      ..close();
-    canvas.drawPath(bodyPath, body);
-
-    canvas.drawCircle(const Offset(66, 54), 17, shadow..color = shadow.color);
-    canvas.drawCircle(const Offset(62, 50), 17, body);
-
-    final spikes = [
-      const Offset(25, 42),
-      const Offset(25, 55),
-      const Offset(28, 68),
-    ];
-    for (final point in spikes) {
-      final path = Path()
-        ..moveTo(point.dx, point.dy)
-        ..lineTo(point.dx - 13, point.dy - 8)
-        ..lineTo(point.dx - 12, point.dy + 8)
-        ..close();
-      canvas.drawPath(path, spike);
-    }
-
-    canvas.drawCircle(const Offset(56, 46), 5, AppColors.white.paint);
-    canvas.drawCircle(const Offset(57, 47), 2.4, ink);
-    canvas.drawCircle(const Offset(74, 47), 3.2, ink);
-    canvas.drawCircle(const Offset(48, 60), 4, cheek);
-    canvas.drawArc(
-      const Rect.fromLTWH(61, 57, 15, 11),
-      0.2,
-      2.2,
-      false,
-      Paint()
-        ..color = PlayfulColors.ink
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-extension on Color {
-  Paint get paint => Paint()..color = this;
 }

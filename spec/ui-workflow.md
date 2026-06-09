@@ -11,6 +11,7 @@ Goal: provide the shortest route to create or join a slow drawing room.
 ### 2. UI Structure
 
 - Profile summary with editable display name.
+- Header actions for Settings and History.
 - Compact `Create Co-op Room`, `Create Versus Room`, and `Join Room` actions.
 - The previous duplicate guest information and empty room-history sections are not displayed.
 
@@ -18,7 +19,35 @@ Goal: provide the shortest route to create or join a slow drawing room.
 
 1. Player loads an anonymous profile.
 2. Player optionally edits their display name.
-3. Player creates a mode-specific room or enters a room code to join.
+3. Player opens Settings or History from the header actions.
+4. Player creates a mode-specific room or enters a room code to join.
+
+## Settings
+
+**Path**: `lib/src/ui/settings`
+
+### 1. Description
+
+Goal: let the player customize app audio and access account/support actions.
+
+### 2. UI Structure
+
+- Screen: `SettingsPage`
+- Components: settings section card, toggle row, link row, delete account card.
+- Route: `AppPages.settings`
+
+### 3. User Flow & Logic
+
+1. Player taps the Settings icon on Home.
+2. Settings opens with a back button, title, and subtitle.
+3. Player toggles Background Music; the choice is saved and the current music starts or stops.
+4. Player toggles Sound Effects; the choice is saved and future tap sounds respect it.
+5. Privacy Policy, Terms of Use, and Delete Account are displayed as support/account actions.
+
+### 4. Key Dependencies
+
+- `AppAudioManager`
+- `AppShared`
 
 ## Room Lobby
 

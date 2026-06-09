@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chính sách quyền riêng tư | Draw Together</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --background: #f7fafc;
+        --surface: #ffffff;
+        --text: #172033;
+        --muted: #5d6b82;
+        --border: #dce4ef;
+        --accent: #173a79;
+        --accent-soft: #b8c9e6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--text);
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.65;
+      }
+
+      .language-header {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .language-tabs {
+        width: min(920px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 16px 0;
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+      }
+
+      .language-tab {
+        border: 1px solid var(--accent-soft);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--accent);
+        cursor: pointer;
+        flex: 0 0 auto;
+        font: inherit;
+        font-weight: 700;
+        line-height: 1;
+        padding: 11px 16px;
+      }
+
+      .language-tab.is-active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+
+      main {
+        width: min(920px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 48px 0;
+      }
+
+      article {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 40px;
+      }
+
+      .language-panel[hidden] {
+        display: none;
+      }
+
+      h1,
+      h2 {
+        line-height: 1.25;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 34px;
+      }
+
+      h2 {
+        margin: 32px 0 12px;
+        font-size: 22px;
+      }
+
+      p {
+        margin: 0 0 14px;
+      }
+
+      ul {
+        margin: 0 0 16px 20px;
+        padding: 0;
+      }
+
+      li {
+        margin: 8px 0;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      .effective-date {
+        color: var(--muted);
+        font-weight: 700;
+        margin-bottom: 28px;
+      }
+
+      @media (max-width: 640px) {
+        .language-tabs {
+          width: min(100% - 24px, 920px);
+        }
+
+        main {
+          width: min(100% - 24px, 920px);
+          padding: 24px 0;
+        }
+
+        article {
+          padding: 24px;
+        }
+
+        h1 {
+          font-size: 28px;
+        }
+
+        h2 {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="language-header" aria-label="Language selector">
+      <nav class="language-tabs">
+        <button class="language-tab" type="button" data-lang-button="en">English</button>
+        <button class="language-tab is-active" type="button" data-lang-button="vi">Tiếng Việt</button>
+        <button class="language-tab" type="button" data-lang-button="ja">日本語</button>
+      </nav>
+    </header>
+
+    <main>
+      <article>
+        <section
+          class="language-panel"
+          data-lang-panel="en"
+          data-page-title="Privacy Policy | Draw Together"
+          lang="en"
+          hidden
+        >
+          <h1>Privacy Policy</h1>
+          <p class="effective-date">Effective date: May 30, 2026</p>
+
+          <h2>Purpose and Scope</h2>
+          <p>
+            This Privacy Policy explains how Draw Together collects, uses,
+            stores, and protects data when you download, access, or use the Draw
+            Together application.
+          </p>
+          <p>
+            This policy applies to drawing gameplay, creating or joining rooms,
+            drawing on the canvas, submitting drawings, AI scoring, viewing
+            result history, settings, player profiles, and online features.
+          </p>
+
+          <h2>Data We Collect</h2>
+          <p>Draw Together may process the following types of data:</p>
+          <ul>
+            <li>In-game display name entered by the user or generated automatically.</li>
+            <li>Avatar or player profile choices inside the application.</li>
+            <li>
+              Room data such as room code, game mode, ready status, players in
+              the room, and round start or end times.
+            </li>
+            <li>
+              Drawing stroke and submission data, including canvas actions,
+              result images, image size, and related round information.
+            </li>
+            <li>
+              Scores, scoring feedback, match history, and comparison data
+              against the target image or another player.
+            </li>
+            <li>
+              Basic technical data required for online play, session continuity,
+              security, and application operation.
+            </li>
+          </ul>
+
+          <h2>Purpose of Data Processing</h2>
+          <p>We use data for the following purposes:</p>
+          <ul>
+            <li>To operate the application and provide gameplay features.</li>
+            <li>
+              To create and join rooms, synchronize player status, and support
+              co-op or versus drawing.
+            </li>
+            <li>To save user choices such as display name, avatar, and settings.</li>
+            <li>To save drawings, submit results, and show round outcomes.</li>
+            <li>
+              To provide AI scoring by comparing drawings with the target image
+              or comparing results between players.
+            </li>
+            <li>To improve stability, performance, and security.</li>
+            <li>To support users when they contact us about the application.</li>
+          </ul>
+
+          <h2>Legal Basis for Processing</h2>
+          <p>
+            We process data as necessary to provide the application service,
+            operate online rooms, save progress and results, process
+            submissions, provide scoring, protect users, maintain security, and
+            comply with legal requirements or app distribution platform
+            requirements.
+          </p>
+
+          <h2>Data Sharing</h2>
+          <p>
+            We do not sell users' personal data. Data may only be shared when
+            necessary with technical infrastructure providers, app distribution
+            platforms, or related services to operate online rooms, store target
+            images and submissions, process scoring, prevent fraud, maintain
+            security, or comply with the law.
+          </p>
+          <p>
+            These third parties may access data only to the extent necessary to
+            provide services for Draw Together or as required by law.
+          </p>
+
+          <h2>Data Security</h2>
+          <p>
+            We apply reasonable measures to protect data from unauthorized
+            access, use, modification, or disclosure. However, no electronic
+            transmission or storage method is completely secure.
+          </p>
+          <p>
+            Some data may be stored locally on the user's device. Users should
+            protect their devices with appropriate measures such as passwords,
+            screen locks, or available security features.
+          </p>
+
+          <h2>Account and Data Deletion</h2>
+          <p>
+            Users may delete local data by removing the application from their
+            device or by using the data deletion function in settings if the
+            application provides one.
+          </p>
+          <p>
+            If you need additional support regarding data related to the
+            application, please contact us using the email address below.
+          </p>
+
+          <h2>Policy Updates</h2>
+          <p>
+            We may update this Privacy Policy when the application changes or
+            when new legal requirements apply. The updated version will be
+            posted on this page and will take effect from the date stated in the
+            policy, unless otherwise noted.
+          </p>
+
+          <h2>Contact</h2>
+          <p>
+            If you have questions about this Privacy Policy, please contact:
+            <a href="mailto:drawtogether.support@gmail.com">drawtogether.support@gmail.com</a>.
+          </p>
+        </section>
+
+        <section
+          class="language-panel"
+          data-lang-panel="vi"
+          data-page-title="Chính sách quyền riêng tư | Draw Together"
+          lang="vi"
+        >
+          <h1>Chính sách quyền riêng tư</h1>
+          <p class="effective-date">Ngày có hiệu lực: 30/05/2026</p>
+
+          <h2>Mục đích và phạm vi</h2>
+          <p>
+            Chính sách quyền riêng tư này mô tả cách Draw Together thu thập, sử
+            dụng, lưu trữ và bảo vệ dữ liệu khi bạn tải, truy cập hoặc sử dụng
+            ứng dụng Draw Together.
+          </p>
+          <p>
+            Chính sách này áp dụng cho các hoạt động trong ứng dụng, bao gồm
+            chơi game vẽ, tạo hoặc tham gia phòng chơi, vẽ trên canvas, gửi bài
+            vẽ, chấm điểm bằng AI, xem lịch sử kết quả, cài đặt, hồ sơ người
+            chơi và các tính năng online.
+          </p>
+
+          <h2>Dữ liệu chúng tôi thu thập</h2>
+          <p>Draw Together có thể xử lý các loại dữ liệu sau:</p>
+          <ul>
+            <li>Tên hiển thị trong game do người dùng nhập hoặc tạo tự động.</li>
+            <li>Ảnh đại diện hoặc lựa chọn hồ sơ người chơi trong ứng dụng.</li>
+            <li>
+              Dữ liệu phòng chơi như mã phòng, chế độ chơi, trạng thái sẵn sàng,
+              người chơi trong phòng và thời điểm bắt đầu hoặc kết thúc vòng
+              chơi.
+            </li>
+            <li>
+              Dữ liệu nét vẽ và bài nộp, bao gồm thao tác vẽ trên canvas, ảnh
+              kết quả, kích thước ảnh và thông tin vòng chơi liên quan.
+            </li>
+            <li>
+              Điểm số, phản hồi chấm điểm, lịch sử trận và dữ liệu so sánh với
+              ảnh mẫu hoặc người chơi khác.
+            </li>
+            <li>
+              Dữ liệu kỹ thuật cơ bản cần thiết cho tính năng chơi online, duy
+              trì phiên chơi, bảo mật và vận hành ứng dụng.
+            </li>
+          </ul>
+
+          <h2>Mục đích xử lý dữ liệu</h2>
+          <p>Chúng tôi sử dụng dữ liệu cho các mục đích sau:</p>
+          <ul>
+            <li>Vận hành ứng dụng và cung cấp các tính năng chơi game.</li>
+            <li>
+              Tạo phòng, tham gia phòng, đồng bộ trạng thái người chơi và hỗ trợ
+              tính năng vẽ cùng nhau hoặc vẽ đối kháng.
+            </li>
+            <li>Lưu lựa chọn của người dùng, bao gồm tên hiển thị, ảnh đại diện và cài đặt.</li>
+            <li>Lưu bài vẽ, gửi bài nộp và hiển thị kết quả sau mỗi vòng chơi.</li>
+            <li>
+              Chấm điểm bằng AI bằng cách so sánh bài vẽ với ảnh mẫu hoặc so
+              sánh kết quả giữa các người chơi.
+            </li>
+            <li>Cải thiện độ ổn định, hiệu năng và bảo mật của ứng dụng.</li>
+            <li>Hỗ trợ người dùng khi có yêu cầu liên quan đến ứng dụng.</li>
+          </ul>
+
+          <h2>Cơ sở xử lý dữ liệu</h2>
+          <p>
+            Chúng tôi xử lý dữ liệu khi cần thiết để cung cấp dịch vụ ứng dụng,
+            vận hành phòng chơi online, lưu tiến trình và kết quả, xử lý bài
+            nộp, chấm điểm, bảo vệ người dùng, duy trì bảo mật và tuân thủ yêu
+            cầu pháp lý hoặc yêu cầu của nền tảng phân phối ứng dụng.
+          </p>
+
+          <h2>Chia sẻ dữ liệu</h2>
+          <p>
+            Chúng tôi không bán dữ liệu cá nhân của người dùng. Dữ liệu chỉ có
+            thể được chia sẻ khi cần thiết với các nhà cung cấp hạ tầng kỹ
+            thuật, nền tảng phân phối ứng dụng hoặc dịch vụ liên quan để vận
+            hành phòng chơi online, lưu trữ ảnh mẫu và bài nộp, xử lý chấm
+            điểm, phòng chống gian lận, duy trì bảo mật hoặc tuân thủ pháp luật.
+          </p>
+          <p>
+            Các bên thứ ba này chỉ được tiếp cận dữ liệu trong phạm vi cần thiết
+            để cung cấp dịch vụ cho Draw Together hoặc theo yêu cầu của pháp
+            luật.
+          </p>
+
+          <h2>Bảo mật dữ liệu</h2>
+          <p>
+            Chúng tôi áp dụng các biện pháp hợp lý để bảo vệ dữ liệu khỏi truy
+            cập, sử dụng, thay đổi hoặc tiết lộ trái phép. Tuy nhiên, không có
+            phương thức truyền tải hoặc lưu trữ điện tử nào an toàn tuyệt đối.
+          </p>
+          <p>
+            Một số dữ liệu có thể được lưu cục bộ trên thiết bị của người dùng.
+            Người dùng nên bảo vệ thiết bị của mình bằng các biện pháp phù hợp
+            như mật khẩu, khóa màn hình hoặc các tính năng bảo mật có sẵn.
+          </p>
+
+          <h2>Xóa tài khoản và xóa dữ liệu</h2>
+          <p>
+            Người dùng có thể xóa dữ liệu cục bộ bằng cách xóa ứng dụng khỏi
+            thiết bị hoặc sử dụng chức năng xóa dữ liệu trong phần cài đặt nếu
+            ứng dụng cung cấp chức năng này.
+          </p>
+          <p>
+            Nếu bạn cần hỗ trợ thêm về dữ liệu liên quan đến ứng dụng, vui lòng
+            liên hệ với chúng tôi qua địa chỉ email bên dưới.
+          </p>
+
+          <h2>Cập nhật Chính sách</h2>
+          <p>
+            Chúng tôi có thể cập nhật Chính sách quyền riêng tư này khi ứng dụng
+            thay đổi hoặc khi có yêu cầu pháp lý mới. Phiên bản mới sẽ được đăng
+            tại trang này và có hiệu lực kể từ ngày được nêu trong chính sách,
+            trừ khi có thông báo khác.
+          </p>
+
+          <h2>Liên hệ</h2>
+          <p>
+            Nếu bạn có câu hỏi về Chính sách quyền riêng tư này, vui lòng liên hệ:
+            <a href="mailto:drawtogether.support@gmail.com">drawtogether.support@gmail.com</a>.
+          </p>
+        </section>
+
+        <section
+          class="language-panel"
+          data-lang-panel="ja"
+          data-page-title="プライバシーポリシー | Draw Together"
+          lang="ja"
+          hidden
+        >
+          <h1>プライバシーポリシー</h1>
+          <p class="effective-date">施行日: 2026年5月30日</p>
+
+          <h2>目的および適用範囲</h2>
+          <p>
+            本プライバシーポリシーは、ユーザーがDraw Togetherをダウンロード、
+            アクセス、または利用する際に、Draw Togetherがデータを収集、使用、
+            保存、保護する方法を説明するものです。
+          </p>
+          <p>
+            本ポリシーは、描画ゲームプレイ、ルームの作成または参加、キャンバス
+            上での描画、作品の提出、AI採点、結果履歴の表示、設定、プレイヤー
+            プロフィール、およびオンライン機能に適用されます。
+          </p>
+
+          <h2>収集するデータ</h2>
+          <p>Draw Togetherは、以下の種類のデータを処理する場合があります。</p>
+          <ul>
+            <li>ユーザーが入力した、または自動生成されたゲーム内表示名。</li>
+            <li>アプリ内のアバターまたはプレイヤープロフィールの選択。</li>
+            <li>
+              ルームコード、ゲームモード、準備状態、ルーム内のプレイヤー、
+              ラウンドの開始時刻または終了時刻などのルームデータ。
+            </li>
+            <li>
+              キャンバス操作、結果画像、画像サイズ、関連するラウンド情報を含む
+              描画ストロークおよび提出データ。
+            </li>
+            <li>
+              スコア、採点フィードバック、対戦履歴、ターゲット画像または他の
+              プレイヤーとの比較データ。
+            </li>
+            <li>
+              オンラインプレイ、セッション維持、セキュリティ、アプリ運営に必要な
+              基本的な技術データ。
+            </li>
+          </ul>
+
+          <h2>データ処理の目的</h2>
+          <p>当社は、以下の目的でデータを使用します。</p>
+          <ul>
+            <li>アプリを運営し、ゲームプレイ機能を提供するため。</li>
+            <li>
+              ルームの作成および参加、プレイヤー状態の同期、協力または対戦描画
+              機能を提供するため。
+            </li>
+            <li>表示名、アバター、設定などのユーザー選択を保存するため。</li>
+            <li>描画、提出結果、各ラウンド後の結果を保存および表示するため。</li>
+            <li>
+              作品をターゲット画像と比較したり、プレイヤー間の結果を比較したり
+              するAI採点を提供するため。
+            </li>
+            <li>安定性、性能、セキュリティを改善するため。</li>
+            <li>アプリに関するお問い合わせに対応するため。</li>
+          </ul>
+
+          <h2>データ処理の根拠</h2>
+          <p>
+            当社は、アプリサービスの提供、オンラインルームの運営、進行状況および
+            結果の保存、提出物の処理、採点、ユーザー保護、セキュリティ維持、
+            法的要件またはアプリ配信プラットフォームの要件への対応に必要な範囲で
+            データを処理します。
+          </p>
+
+          <h2>データの共有</h2>
+          <p>
+            当社はユーザーの個人データを販売しません。データは、オンラインルーム
+            の運営、ターゲット画像および提出物の保存、採点処理、不正防止、
+            セキュリティ維持、または法令遵守のために必要な場合に限り、技術
+            インフラ提供者、アプリ配信プラットフォーム、または関連サービスと共有
+            されることがあります。
+          </p>
+          <p>
+            これらの第三者は、Draw Togetherにサービスを提供するため、または法令に
+            より必要な範囲でのみデータにアクセスできます。
+          </p>
+
+          <h2>データの安全管理</h2>
+          <p>
+            当社は、不正アクセス、使用、改ざん、開示からデータを保護するために
+            合理的な措置を講じます。ただし、電子的な送信または保存方法に完全な
+            安全性はありません。
+          </p>
+          <p>
+            一部のデータはユーザーの端末にローカル保存される場合があります。
+            ユーザーは、パスワード、画面ロック、その他利用可能なセキュリティ
+            機能により端末を保護することを推奨します。
+          </p>
+
+          <h2>アカウントおよびデータの削除</h2>
+          <p>
+            ユーザーは、端末からアプリを削除するか、アプリが提供する場合は設定内
+            のデータ削除機能を使用することで、ローカルデータを削除できます。
+          </p>
+          <p>
+            アプリに関連するデータについて追加のサポートが必要な場合は、下記の
+            メールアドレスまでお問い合わせください。
+          </p>
+
+          <h2>ポリシーの更新</h2>
+          <p>
+            当社は、アプリの変更または新たな法的要件に応じて、本プライバシー
+            ポリシーを更新する場合があります。更新版はこのページに掲載され、
+            別途記載がない限り、ポリシーに記載された日付から有効になります。
+          </p>
+
+          <h2>お問い合わせ</h2>
+          <p>
+            本プライバシーポリシーに関するご質問は、以下までお問い合わせください。
+            <a href="mailto:drawtogether.support@gmail.com">drawtogether.support@gmail.com</a>
+          </p>
+        </section>
+      </article>
+    </main>
+
+    <script>
+      const defaultLanguage = "vi";
+      const storageKey = "drawTogetherLegalLanguage";
+      const buttons = document.querySelectorAll("[data-lang-button]");
+      const panels = document.querySelectorAll("[data-lang-panel]");
+
+      function getSavedLanguage() {
+        try {
+          return localStorage.getItem(storageKey);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function saveLanguage(language) {
+        try {
+          localStorage.setItem(storageKey, language);
+        } catch (_) {
+          // Language switching still works when storage is unavailable.
+        }
+      }
+
+      function setLanguage(language) {
+        const selectedPanel =
+          document.querySelector(`[data-lang-panel="${language}"]`) ||
+          document.querySelector(`[data-lang-panel="${defaultLanguage}"]`);
+        const selectedLanguage = selectedPanel.dataset.langPanel;
+
+        panels.forEach((panel) => {
+          panel.hidden = panel.dataset.langPanel !== selectedLanguage;
+        });
+
+        buttons.forEach((button) => {
+          const isActive = button.dataset.langButton === selectedLanguage;
+          button.classList.toggle("is-active", isActive);
+          button.setAttribute("aria-pressed", String(isActive));
+        });
+
+        document.documentElement.lang = selectedPanel.lang || selectedLanguage;
+        document.title = selectedPanel.dataset.pageTitle;
+        saveLanguage(selectedLanguage);
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setLanguage(button.dataset.langButton);
+        });
+      });
+
+      setLanguage(getSavedLanguage() || defaultLanguage);
+    </script>
+  </body>
+</html>

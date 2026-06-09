@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
 import 'package:draw_together/src/utils/app_dimensions.dart';
@@ -40,7 +42,7 @@ class AppCheckbox extends StatelessWidget {
         (checked ? AppColors.transparent : AppColors.colorDFE4F5);
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: AppAudioTap.wrap(onTap),
       child: Container(
         padding: AppDimensions.allMargins,
         decoration: BoxDecoration(

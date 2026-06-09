@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
 import 'package:draw_together/src/utils/app_dimensions.dart';
@@ -80,6 +82,7 @@ class _AppTabViewState extends State<AppTabView>
     bool isActive = widget.selectedTab == widget.id;
     return InkWell(
       onTap: () {
+        AppAudioTap.play();
         widget.onClick?.call();
         setState(() {
           _alignmentAnimation =

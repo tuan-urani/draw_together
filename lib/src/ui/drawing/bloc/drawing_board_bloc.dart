@@ -276,6 +276,7 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
           currentUserId: currentUserId,
           currentColorHex: _colorForCurrentPlayer(
             room.mode,
+            target,
             players,
             currentUserId,
           ),
@@ -783,21 +784,17 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
 
   String _colorForCurrentPlayer(
     RoomMode mode,
+    TargetImage? target,
     List<RoomPlayer> players,
     String? userId,
   ) {
-    if (mode == RoomMode.versus) return '#1F2937';
-
     final seat = players
         .where((player) => player.userId == userId)
         .map((player) => player.seat)
         .firstOrNull;
 
-    return switch (seat) {
-      1 => '#1F2937',
-      2 => '#EF4056',
-      _ => '#1F2937',
-    };
+    return target?.colorForPlayer(mode: mode, seat: seat) ??
+        TargetImage.defaultColorFor(mode: mode, seat: seat);
   }
 
   RoomPlayer? _currentRoomPlayer(List<RoomPlayer> players, String userId) {

@@ -4,7 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 type ScoreResult = {
   score: number;
   confidence: number;
-  rationale: string;
+  rationale: string[];
+};
+
+type TargetColorMetadata = {
+  stroke_color?: string | null;
+  player1_color?: string | null;
+  player2_color?: string | null;
 };
 
 const corsHeaders = {
@@ -14,7 +20,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const promptVersion = "slow_similarity_v2_mode_palette";
+const promptVersion = "slow_similarity_v3_target_palette";
+const defaultStrokeColor = "#1F2937";
+const defaultPlayer1Color = "#1F2937";
+const defaultPlayer2Color = "#EF4056";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -102,6 +111,7 @@ Deno.serve(async (req: Request) => {
         model,
         openAiApiKey,
         targetDataUrl,
+        targetColors: target,
       });
 
       return jsonResponse(result);
@@ -114,6 +124,7 @@ Deno.serve(async (req: Request) => {
       model,
       openAiApiKey,
       targetDataUrl,
+      targetColors: target,
     });
 
     return jsonResponse(result);
@@ -157,6 +168,7 @@ async function scoreCoopRound({
   model,
   openAiApiKey,
   targetDataUrl,
+  targetColors,
 }: {
   supabase: ReturnType<typeof createClient>;
   round: Record<string, string>;
@@ -164,6 +176,7 @@ async function scoreCoopRound({
   model: string;
   openAiApiKey: string;
   targetDataUrl: string;
+  targetColors: TargetColorMetadata;
 }) {
   const submission = await fetchTeamSubmission(supabase, round.id);
   const submissionDataUrl = await downloadAsDataUrl(
@@ -179,6 +192,7 @@ async function scoreCoopRound({
     mode: "coop",
     targetDataUrl,
     submissionDataUrl,
+    targetColors,
   });
 
   const { data: judgement, error: judgementError } = await supabase
@@ -226,12 +240,14 @@ async function scoreVersusRound({
   model,
   openAiApiKey,
   targetDataUrl,
+  targetColors,
 }: {
   supabase: ReturnType<typeof createClient>;
   round: Record<string, string>;
   model: string;
   openAiApiKey: string;
   targetDataUrl: string;
+  targetColors: TargetColorMetadata;
 }) {
   const submissions = await fetchPlayerSubmissions(supabase, round.id);
   if (submissions.length < 2) {
@@ -252,6 +268,7 @@ async function scoreVersusRound({
       mode: "versus",
       targetDataUrl,
       submissionDataUrl,
+      targetColors,
     });
 
     scoredSubmissions.push({ submission, result });
@@ -436,22 +453,52 @@ async function downloadAsDataUrl(
   return `data:${contentType};base64,${base64FromBytes(bytes)}`;
 }
 
+function colorOrDefault(value: string | null | undefined, fallback: string) {
+  const color = value?.trim();
+  return color && color.length > 0 ? color : fallback;
+}
+
+function paletteInstructionFor(
+  mode: "coop" | "versus",
+  targetColors: TargetColorMetadata,
+) {
+  if (mode === "coop") {
+    const player1Color = colorOrDefault(
+      targetColors.player1_color,
+      defaultPlayer1Color,
+    );
+    const player2Color = colorOrDefault(
+      targetColors.player2_color,
+      defaultPlayer2Color,
+    );
+
+    return `For co-op, target lines assign each player's contribution by color: seat 1 uses ${player1Color}, and seat 2 uses ${player2Color}. Penalize important target segments that are missing or drawn in the wrong assigned color.`;
+  }
+
+  const strokeColor = colorOrDefault(
+    targetColors.stroke_color,
+    defaultStrokeColor,
+  );
+
+  return `For versus, target and submission should use the same stroke color (${strokeColor}); compare structure and completeness.`;
+}
+
 async function scoreWithOpenAi({
   apiKey,
   model,
   mode,
   targetDataUrl,
   submissionDataUrl,
+  targetColors,
 }: {
   apiKey: string;
   model: string;
   mode: "coop" | "versus";
   targetDataUrl: string;
   submissionDataUrl: string;
+  targetColors: TargetColorMetadata;
 }): Promise<ScoreResult> {
-  const paletteInstruction = mode === "coop"
-    ? "For co-op, black and red target lines assign each player's contribution. Penalize important target segments that are missing or drawn in the wrong assigned color."
-    : "For versus, target and submission should use the same black line color; compare structure and completeness.";
+  const paletteInstruction = paletteInstructionFor(mode, targetColors);
   const submissionLabel = mode === "coop"
     ? "the combined team drawing"
     : "one player's drawing";
@@ -473,7 +520,7 @@ async function scoreWithOpenAi({
             {
               type: "input_text",
               text:
-                `Image 1 is the target. Image 2 is ${submissionLabel}. Return the similarity score, confidence, and a short rationale.`,
+                `Image 1 is the target. Image 2 is ${submissionLabel}. Return the similarity score, confidence, and 3 to 5 concise rationale bullet points as a string array. Each rationale item should explain one concrete visual reason for the score.`,
             },
             { type: "input_image", image_url: targetDataUrl },
             { type: "input_image", image_url: submissionDataUrl },
@@ -491,7 +538,12 @@ async function scoreWithOpenAi({
             properties: {
               score: { type: "integer", minimum: 0, maximum: 100 },
               confidence: { type: "number", minimum: 0, maximum: 1 },
-              rationale: { type: "string" },
+              rationale: {
+                type: "array",
+                minItems: 3,
+                maxItems: 5,
+                items: { type: "string" },
+              },
             },
             required: ["score", "confidence", "rationale"],
           },
@@ -515,8 +567,19 @@ async function scoreWithOpenAi({
   return {
     score: parsed.score,
     confidence: Number(parsed.confidence),
-    rationale: String(parsed.rationale),
+    rationale: rationaleFromParsedValue(parsed.rationale),
   };
+}
+
+function rationaleFromParsedValue(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item).trim())
+      .filter((item) => item.length > 0);
+  }
+
+  const rationale = String(value ?? "").trim();
+  return rationale.length > 0 ? [rationale] : [];
 }
 
 function extractOutputText(payload: Record<string, unknown>): string {

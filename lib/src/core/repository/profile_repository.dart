@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:draw_together/src/core/model/player_display_name.dart';
 import 'package:draw_together/src/core/model/profile.dart';
 
 class ProfileRepository {
@@ -7,7 +8,7 @@ class ProfileRepository {
 
   final SupabaseClient _client;
 
-  Future<Profile> ensureCurrentProfile({String displayName = 'Player'}) async {
+  Future<Profile> ensureCurrentProfile({String? displayName}) async {
     final user = _client.auth.currentUser;
     if (user == null) {
       throw const AuthException('Missing authenticated user.');
@@ -19,7 +20,10 @@ class ProfileRepository {
     return upsertProfile(
       Profile(
         id: user.id,
-        displayName: _metadataDisplayName(user) ?? displayName,
+        displayName:
+            _metadataDisplayName(user) ??
+            displayName ??
+            PlayerDisplayName.randomName(),
         authProvider: user.appMetadata['provider'] as String?,
         avatarUrl: user.userMetadata?['avatar_url'] as String?,
       ),
@@ -62,6 +66,22 @@ class ProfileRepository {
     final row = await _client
         .from('profiles')
         .update({'display_name': displayName.trim()})
+        .eq('id', user.id)
+        .select()
+        .single();
+
+    return Profile.fromJson(Map<String, dynamic>.from(row));
+  }
+
+  Future<Profile> updateAvatarUrl(String avatarUrl) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Missing authenticated user.');
+    }
+
+    final row = await _client
+        .from('profiles')
+        .update({'avatar_url': avatarUrl})
         .eq('id', user.id)
         .select()
         .single();

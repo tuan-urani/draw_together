@@ -156,6 +156,9 @@ Example:
   "width": 1024,
   "height": 1024,
   "mime_type": "image/png",
+  "stroke_color": "#1F2937",
+  "player1_color": null,
+  "player2_color": null,
   "active": true
 }
 ```
@@ -172,6 +175,9 @@ Co-op example:
   "width": 1024,
   "height": 1024,
   "mime_type": "image/png",
+  "stroke_color": null,
+  "player1_color": "#1F2937",
+  "player2_color": "#EF4056",
   "active": true
 }
 ```
@@ -179,8 +185,13 @@ Co-op example:
 Optional fields:
 
 - `checksum` for duplicate detection,
+- `stroke_color` for `versus` targets,
+- `player1_color` and `player2_color` for `coop` targets,
 - `tags` for later target filtering,
 - `sort_order` for curated target sequences.
+
+Missing color metadata falls back to the legacy palette: `#1F2937` for
+`versus`/seat 1 and `#EF4056` for seat 2.
 
 ## Target Selection
 

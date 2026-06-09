@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 
+import 'package:draw_together/src/core/audio/app_audio_tap.dart';
 import 'package:draw_together/src/core/model/game_room.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/locale/locale_key.dart';
 import 'package:draw_together/src/ui/base/interactor/page_states.dart';
 import 'package:draw_together/src/ui/home/bloc/home_bloc.dart';
+import 'package:draw_together/src/ui/widgets/app_playful_dialog.dart';
 import 'package:draw_together/src/ui/widgets/base/toast/app_toast.dart';
 import 'package:draw_together/src/ui/widgets/playful_ui.dart';
 import 'package:draw_together/src/utils/app_assets.dart';
@@ -47,6 +50,7 @@ class _HomePageState extends State<HomePage> {
         listenWhen: (previous, current) {
           return previous.errorMessage != current.errorMessage ||
               previous.profile?.displayName != current.profile?.displayName ||
+              previous.profile?.avatarUrl != current.profile?.avatarUrl ||
               previous.activeRoom?.id != current.activeRoom?.id;
         },
         listener: (context, state) {
@@ -82,32 +86,62 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Draw\n',
-                        style: AppStyles.h40(
-                          color: PlayfulColors.ink,
-                          fontWeight: FontWeight.w900,
-                          height: 0.95,
-                        ),
+                Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Draw\n',
+                            style: AppStyles.h40(
+                              color: PlayfulColors.ink,
+                              fontWeight: FontWeight.w900,
+                              height: 0.95,
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'Together!',
+                            style: AppStyles.h40(
+                              color: PlayfulColors.blue,
+                              fontWeight: FontWeight.w900,
+                              height: 0.95,
+                            ),
+                          ),
+                        ],
                       ),
-                      TextSpan(
-                        text: 'Together!',
-                        style: AppStyles.h40(
-                          color: PlayfulColors.blue,
-                          fontWeight: FontWeight.w900,
-                          height: 0.95,
-                        ),
+                    ),
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Semantics(
+                            button: true,
+                            label: LocaleKey.history.tr,
+                            child: PlayfulIconButton(
+                              icon: Icons.history_rounded,
+                              onTap: () => Get.toNamed(AppPages.history),
+                            ),
+                          ),
+                          4.width,
+                          Semantics(
+                            button: true,
+                            label: LocaleKey.settingsTitle.tr,
+                            child: PlayfulIconButton(
+                              icon: Icons.settings_rounded,
+                              onTap: () => Get.toNamed(AppPages.settings),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 16.height,
                 Text(
-                  'Draw, guess, have fun!',
+                  'Draw, challenge, have fun!',
                   textAlign: TextAlign.center,
                   style: AppStyles.h4(
                     color: PlayfulColors.ink,
@@ -117,6 +151,12 @@ class _HomePageState extends State<HomePage> {
                 36.height,
                 _ProfileSummary(
                   state: state,
+                  avatarAsset: _profileAvatarAsset(state.profile?.avatarUrl),
+                  onAvatarTap: state.isSaving
+                      ? null
+                      : () => _showAvatarPickerDialog(
+                          _profileAvatarAsset(state.profile?.avatarUrl),
+                        ),
                   onEdit: state.isSaving ? null : _showDisplayNameDialog,
                 ),
                 24.height,
@@ -168,7 +208,12 @@ class _HomePageState extends State<HomePage> {
         title: LocaleKey.joinRoom.tr,
         hintText: LocaleKey.roomCodeHint.tr,
         submitLabel: LocaleKey.joinRoom.tr,
+        maxLength: 6,
         textCapitalization: TextCapitalization.characters,
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]')),
+          UpperCaseTextFormatter(),
+        ],
       ),
     );
 
@@ -179,7 +224,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _showDisplayNameDialog() async {
     final displayName = await Get.dialog<String>(
       _HomeTextInputDialog(
-        title: LocaleKey.displayName.tr,
+        title: LocaleKey.editName.tr,
         hintText: LocaleKey.displayNameHint.tr,
         submitLabel: LocaleKey.save.tr,
         initialText: _displayNameController.text,
@@ -191,8 +236,38 @@ class _HomePageState extends State<HomePage> {
     await _bloc.updateDisplayName(displayName);
   }
 
+  Future<void> _showAvatarPickerDialog(String selectedAvatar) async {
+    final avatarAsset = await Get.dialog<String>(
+      AppPlayfulDialog(
+        title: LocaleKey.chooseAvatar.tr,
+        tone: AppPlayfulDialogTone.info,
+        content: _AvatarPickerGrid(selectedAvatar: selectedAvatar),
+        actions: [
+          AppPlayfulDialogButton(
+            label: LocaleKey.cancel.tr,
+            style: AppPlayfulDialogButtonStyle.soft,
+            onTap: () => Get.back<String>(),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || avatarAsset == null || avatarAsset == selectedAvatar) {
+      return;
+    }
+    await _bloc.updateAvatar(avatarAsset);
+  }
+
   void _openRoomBrowser(RoomMode mode) {
     Get.toNamed(AppPages.roomBrowser, arguments: {'mode': mode});
+  }
+
+  String _profileAvatarAsset(String? avatarUrl) {
+    if (avatarUrl != null && AppAssets.avatarPngs.contains(avatarUrl)) {
+      return avatarUrl;
+    }
+
+    return AppAssets.defaultAvatarPng;
   }
 }
 
@@ -204,6 +279,7 @@ class _HomeTextInputDialog extends StatefulWidget {
     this.initialText = '',
     this.maxLength,
     this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
   });
 
   final String title;
@@ -212,6 +288,7 @@ class _HomeTextInputDialog extends StatefulWidget {
   final String initialText;
   final int? maxLength;
   final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<_HomeTextInputDialog> createState() => _HomeTextInputDialogState();
@@ -234,33 +311,189 @@ class _HomeTextInputDialogState extends State<_HomeTextInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: TextField(
+    return AppPlayfulDialog(
+      title: widget.title,
+      tone: AppPlayfulDialogTone.info,
+      showCloseButton: false,
+      content: _PlayfulTextField(
         controller: _controller,
-        autofocus: true,
+        hintText: widget.hintText,
         maxLength: widget.maxLength,
         textCapitalization: widget.textCapitalization,
-        decoration: InputDecoration(hintText: widget.hintText),
-        onSubmitted: (_) => _submit(),
+        inputFormatters: widget.inputFormatters,
+        onSubmitted: _submit,
       ),
       actions: [
-        TextButton(
-          onPressed: () => Get.back<String>(),
-          child: Text(LocaleKey.cancel.tr),
+        AppPlayfulDialogButton(
+          label: LocaleKey.cancel.tr,
+          style: AppPlayfulDialogButtonStyle.soft,
+          onTap: () => Get.back<String>(),
         ),
-        TextButton(onPressed: _submit, child: Text(widget.submitLabel)),
+        AppPlayfulDialogButton(label: widget.submitLabel, onTap: _submit),
       ],
     );
   }
 
-  void _submit() => Get.back<String>(result: _controller.text);
+  void _submit() => Get.back<String>(result: _controller.text.trim());
+}
+
+class _PlayfulTextField extends StatelessWidget {
+  const _PlayfulTextField({
+    required this.controller,
+    required this.hintText,
+    required this.onSubmitted,
+    this.maxLength,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
+  });
+
+  final TextEditingController controller;
+  final String hintText;
+  final VoidCallback onSubmitted;
+  final int? maxLength;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      autofocus: true,
+      maxLength: maxLength,
+      textAlign: maxLength == 6 ? TextAlign.center : TextAlign.start,
+      textCapitalization: textCapitalization,
+      inputFormatters: inputFormatters,
+      style: AppStyles.bodyLarge(
+        color: PlayfulColors.ink,
+        fontWeight: FontWeight.w900,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        counterStyle: AppStyles.bodySmall(
+          color: PlayfulColors.muted,
+          fontWeight: FontWeight.w700,
+        ),
+        hintStyle: AppStyles.bodyMedium(
+          color: PlayfulColors.muted.withValues(alpha: 0.72),
+          fontWeight: FontWeight.w700,
+        ),
+        filled: true,
+        fillColor: AppColors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: 12.borderRadiusAll,
+          borderSide: const BorderSide(color: PlayfulColors.lobbyBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: 12.borderRadiusAll,
+          borderSide: const BorderSide(color: PlayfulColors.blue, width: 1.4),
+        ),
+      ),
+      onSubmitted: (_) => onSubmitted(),
+    );
+  }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
+  }
+}
+
+class _AvatarPickerGrid extends StatelessWidget {
+  const _AvatarPickerGrid({required this.selectedAvatar});
+
+  final String selectedAvatar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      alignment: WrapAlignment.center,
+      children: [
+        for (final avatarAsset in AppAssets.avatarPngs)
+          _AvatarOption(
+            avatarAsset: avatarAsset,
+            selected: avatarAsset == selectedAvatar,
+          ),
+      ],
+    );
+  }
+}
+
+class _AvatarOption extends StatelessWidget {
+  const _AvatarOption({required this.avatarAsset, required this.selected});
+
+  final String avatarAsset;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: AppAudioTap.wrap(() => Get.back<String>(result: avatarAsset)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: selected ? PlayfulColors.softBlue : AppColors.white,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? PlayfulColors.blue : PlayfulColors.lobbyBorder,
+            width: selected ? 3 : 1.4,
+          ),
+          boxShadow: selected ? playfulBlueShadow : playfulShadow,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              PlayfulAvatar(size: 62, online: false, imageAsset: avatarAsset),
+              if (selected)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: PlayfulColors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: Icon(
+                        Icons.check_rounded,
+                        color: AppColors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ProfileSummary extends StatelessWidget {
-  const _ProfileSummary({required this.state, required this.onEdit});
+  const _ProfileSummary({
+    required this.state,
+    required this.avatarAsset,
+    required this.onAvatarTap,
+    required this.onEdit,
+  });
 
   final HomeState state;
+  final String avatarAsset;
+  final VoidCallback? onAvatarTap;
   final VoidCallback? onEdit;
 
   @override
@@ -269,91 +502,45 @@ class _ProfileSummary extends StatelessWidget {
     if (profile == null) return const SizedBox.shrink();
 
     return PlayfulCard(
-      radius: 30,
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
       child: Row(
         children: [
-          const PlayfulAvatar(size: 82),
-          22.width,
+          GestureDetector(
+            onTap: AppAudioTap.wrap(onAvatarTap),
+            child: PlayfulAvatar(size: 58, imageAsset: avatarAsset),
+          ),
+          16.width,
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.displayName,
-                  style: AppStyles.h4(
-                    color: PlayfulColors.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                8.height,
-                const _OnlinePill(),
-              ],
+            child: Text(
+              profile.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppStyles.h4(
+                color: PlayfulColors.ink,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
           GestureDetector(
-            onTap: onEdit,
+            onTap: AppAudioTap.wrap(onEdit),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: const Color(0xFFF1F4FA),
                 borderRadius: 20.borderRadiusAll,
               ),
               child: const SizedBox(
-                width: 60,
-                height: 60,
+                width: 46,
+                height: 46,
                 child: Icon(
                   Icons.edit_outlined,
                   color: PlayfulColors.ink,
-                  size: 30,
+                  size: 24,
                 ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _OnlinePill extends StatelessWidget {
-  const _OnlinePill();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: 99.borderRadiusAll,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF87A6C8).withValues(alpha: 0.12),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                color: PlayfulColors.green,
-                shape: BoxShape.circle,
-              ),
-              child: SizedBox(width: 12, height: 12),
-            ),
-            8.width,
-            Text(
-              LocaleKey.online.tr,
-              style: AppStyles.bodyLarge(
-                color: PlayfulColors.muted,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -379,7 +566,7 @@ class _ModeActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: AppAudioTap.wrap(onTap),
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: gradient,
@@ -483,7 +670,7 @@ class _JoinRoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: enabled ? onTap : null,
+      onTap: enabled ? AppAudioTap.wrap(onTap) : null,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -495,15 +682,9 @@ class _JoinRoomCard extends StatelessWidget {
         child: SizedBox(
           height: 104,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(28, 0, 24, 0),
             child: Row(
               children: [
-                const Icon(
-                  Icons.login_rounded,
-                  color: AppColors.black,
-                  size: 36,
-                ),
-                22.width,
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -518,7 +699,7 @@ class _JoinRoomCard extends StatelessWidget {
                       ),
                       4.height,
                       Text(
-                        'Enter a code and start playing',
+                        LocaleKey.joinRoomPrompt.tr,
                         style: AppStyles.bodyMedium(
                           color: PlayfulColors.ink.withValues(alpha: 0.72),
                           fontWeight: FontWeight.w700,
@@ -533,8 +714,8 @@ class _JoinRoomCard extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: SizedBox(
-                    width: 56,
-                    height: 56,
+                    width: 44,
+                    height: 44,
                     child: Icon(
                       Icons.arrow_forward_rounded,
                       color: Color(0xFFFF8600),

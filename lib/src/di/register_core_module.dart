@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:draw_together/src/core/repository/auth_repository.dart';
+import 'package:draw_together/src/core/repository/history_repository.dart';
 import 'package:draw_together/src/core/repository/profile_repository.dart';
 import 'package:draw_together/src/core/repository/room_repository.dart';
 import 'package:draw_together/src/core/repository/scoring_repository.dart';
@@ -54,6 +55,13 @@ Future<void> registerCoreModule() async {
   if (!Get.isRegistered<ScoringRepository>()) {
     Get.put<ScoringRepository>(
       ScoringRepository(Get.find<SupabaseClient>()),
+      permanent: true,
+    );
+  }
+
+  if (!Get.isRegistered<HistoryRepository>()) {
+    Get.put<HistoryRepository>(
+      HistoryRepository(Get.find<SupabaseClient>()),
       permanent: true,
     );
   }

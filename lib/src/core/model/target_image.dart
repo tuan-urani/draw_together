@@ -28,7 +28,14 @@ class TargetImage {
     required this.active,
     required this.createdAt,
     this.checksum,
+    this.strokeColor,
+    this.player1Color,
+    this.player2Color,
   });
+
+  static const defaultStrokeColor = '#1F2937';
+  static const defaultPlayer1Color = '#1F2937';
+  static const defaultPlayer2Color = '#EF4056';
 
   final String id;
   final String storagePath;
@@ -41,6 +48,9 @@ class TargetImage {
   final bool active;
   final DateTime createdAt;
   final String? checksum;
+  final String? strokeColor;
+  final String? player1Color;
+  final String? player2Color;
 
   factory TargetImage.fromJson(Map<String, dynamic> json) {
     return TargetImage(
@@ -57,6 +67,38 @@ class TargetImage {
       active: json['active'] as bool? ?? true,
       createdAt: DateTime.parse(json['created_at'] as String),
       checksum: json['checksum'] as String?,
+      strokeColor: _colorFromJson(json['stroke_color']),
+      player1Color: _colorFromJson(json['player1_color']),
+      player2Color: _colorFromJson(json['player2_color']),
     );
+  }
+
+  static String defaultColorFor({required RoomMode mode, int? seat}) {
+    if (mode == RoomMode.versus) return defaultStrokeColor;
+
+    return switch (seat) {
+      2 => defaultPlayer2Color,
+      _ => defaultPlayer1Color,
+    };
+  }
+
+  String colorForPlayer({required RoomMode mode, int? seat}) {
+    if (mode == RoomMode.versus) {
+      return strokeColor ?? defaultStrokeColor;
+    }
+
+    return switch (seat) {
+      2 => player2Color ?? defaultPlayer2Color,
+      _ => player1Color ?? defaultPlayer1Color,
+    };
+  }
+
+  static String? _colorFromJson(Object? value) {
+    if (value is! String) return null;
+
+    final color = value.trim();
+    if (color.isEmpty) return null;
+
+    return color;
   }
 }

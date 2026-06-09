@@ -6,6 +6,7 @@ class RoomPlayer {
     required this.joinedAt,
     this.leftAt,
     this.displayName,
+    this.avatarUrl,
   });
 
   final String roomId;
@@ -14,6 +15,7 @@ class RoomPlayer {
   final DateTime joinedAt;
   final DateTime? leftAt;
   final String? displayName;
+  final String? avatarUrl;
 
   factory RoomPlayer.fromJson(Map<String, dynamic> json) {
     final profile = json['profiles'];
@@ -26,6 +28,7 @@ class RoomPlayer {
       joinedAt: DateTime.parse(json['joined_at'] as String),
       leftAt: _dateTimeFromJson(json['left_at']),
       displayName: profileMap?['display_name'] as String?,
+      avatarUrl: profileMap?['avatar_url'] as String?,
     );
   }
 

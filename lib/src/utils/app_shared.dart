@@ -9,6 +9,10 @@ class AppShared {
   static const String _keyFcmToken = '${keyName}_keyFCMToken';
   static const String _keyTokenValue = '${keyName}_keyTokenValue';
   static const String _keyLanguageCode = '${keyName}_keyLanguageCode';
+  static const String _keyBackgroundMusicEnabled =
+      '${keyName}_keyBackgroundMusicEnabled';
+  static const String _keySoundEffectsEnabled =
+      '${keyName}_keySoundEffectsEnabled';
 
   final SharedPreferences _prefs;
   final StreamController<String?> _tokenValueController =
@@ -28,6 +32,22 @@ class AppShared {
 
   String? getLanguageCode() => _prefs.getString(_keyLanguageCode);
 
+  Future<void> setBackgroundMusicEnabled(bool enabled) async {
+    await _prefs.setBool(_keyBackgroundMusicEnabled, enabled);
+  }
+
+  bool getBackgroundMusicEnabled() {
+    return _prefs.getBool(_keyBackgroundMusicEnabled) ?? true;
+  }
+
+  Future<void> setSoundEffectsEnabled(bool enabled) async {
+    await _prefs.setBool(_keySoundEffectsEnabled, enabled);
+  }
+
+  bool getSoundEffectsEnabled() {
+    return _prefs.getBool(_keySoundEffectsEnabled) ?? true;
+  }
+
   Future<void> setTokenValue(String tokenValue) async {
     await _prefs.setString(_keyTokenValue, tokenValue);
     _tokenValueController.add(tokenValue);
@@ -41,6 +61,8 @@ class AppShared {
     await _prefs.remove(_keyFcmToken);
     await _prefs.remove(_keyTokenValue);
     await _prefs.remove(_keyLanguageCode);
+    await _prefs.remove(_keyBackgroundMusicEnabled);
+    await _prefs.remove(_keySoundEffectsEnabled);
     _tokenValueController.add(null);
     return 1;
   }

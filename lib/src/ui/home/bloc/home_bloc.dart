@@ -101,6 +101,24 @@ class HomeBloc extends Cubit<HomeState> {
     }
   }
 
+  Future<void> updateAvatar(String avatarAsset) async {
+    emit(state.copyWith(isSaving: true, clearError: true));
+
+    try {
+      final profile = await _profileRepository.updateAvatarUrl(avatarAsset);
+      emit(
+        state.copyWith(
+          pageState: PageState.success,
+          profile: profile,
+          isSaving: false,
+          clearError: true,
+        ),
+      );
+    } catch (error) {
+      emit(state.copyWith(isSaving: false, errorMessage: error.toString()));
+    }
+  }
+
   Future<void> createRoom(RoomMode mode) async {
     emit(
       state.copyWith(

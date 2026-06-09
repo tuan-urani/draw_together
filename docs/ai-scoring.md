@@ -20,7 +20,7 @@ This keeps scoring simple and makes the consequence of fast drawing visible.
 
 ## Co-op Input
 
-- two-color target image with black/red assigned line segments
+- two-color target image with player-assigned line colors
 - team final canvas using the same player-assigned colors
 
 Expected output:
@@ -28,7 +28,12 @@ Expected output:
 ```json
 {
   "score": 78,
-  "confidence": 0.84
+  "confidence": 0.84,
+  "rationale": [
+    "The main house shape is recognizable.",
+    "The window placement is incomplete.",
+    "Some assigned color segments are missing."
+  ]
 }
 ```
 
@@ -43,10 +48,20 @@ Expected output:
 ```json
 {
   "playerA": {
-    "score": 81
+    "score": 81,
+    "rationale": [
+      "The rocket silhouette is clear.",
+      "The fins are slightly misplaced.",
+      "The lower flame detail is missing."
+    ]
   },
   "playerB": {
-    "score": 67
+    "score": 67,
+    "rationale": [
+      "The object identity is partially recognizable.",
+      "The proportions differ from the target.",
+      "Several major line segments are missing."
+    ]
   },
   "winner": "playerA",
   "confidence": 0.88
@@ -68,7 +83,7 @@ Evaluate:
 - presence of major parts
 - relative proportions and placement
 - important target details
-- for Co-op only: whether required black/red assigned segments are present in the matching color
+- for Co-op only: whether required player-assigned segments are present in the matching color
 
 Do not reward artistic style.
 Do not penalize rough hand-drawn lines unless they make the target less recognizable.
