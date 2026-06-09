@@ -163,6 +163,72 @@ class SettingsLinkRow extends StatelessWidget {
   }
 }
 
+class SettingsLanguageRow extends StatelessWidget {
+  const SettingsLanguageRow({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.showDivider = true,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final Map<String, String> options;
+  final ValueChanged<String> onChanged;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsRowFrame(
+      showDivider: showDivider,
+      child: Row(
+        children: [
+          const PlayfulIconTile(
+            icon: Icons.language_rounded,
+            size: 46,
+            color: PlayfulColors.settingsGold,
+            background: PlayfulColors.settingsGoldSoft,
+          ),
+          14.width,
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _SettingsTextStyle.itemLabel,
+            ),
+          ),
+          12.width,
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              borderRadius: 16.borderRadiusAll,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: PlayfulColors.ink,
+              ),
+              style: _SettingsTextStyle.dropdownLabel,
+              items: options.entries
+                  .map(
+                    (entry) => DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (languageCode) {
+                if (languageCode != null) onChanged(languageCode);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class SettingsDeleteCard extends StatelessWidget {
   const SettingsDeleteCard({
     required this.title,
@@ -235,6 +301,7 @@ class _SettingsTextStyle {
 
   static const double sectionTitleSize = 16;
   static const double itemLabelSize = 14;
+  static const double dropdownLabelSize = 13;
   static const double deleteTitleSize = 14;
   static const double deleteSubtitleSize = 12;
 
@@ -249,6 +316,13 @@ class _SettingsTextStyle {
     fontSize: itemLabelSize,
     color: PlayfulColors.ink,
     fontWeight: FontWeight.w900,
+    height: 1.2,
+  );
+
+  static final TextStyle dropdownLabel = _settingsTextStyle(
+    fontSize: dropdownLabelSize,
+    color: PlayfulColors.ink,
+    fontWeight: FontWeight.w800,
     height: 1.2,
   );
 

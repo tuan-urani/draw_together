@@ -20,6 +20,8 @@ class AppAssets {
   static const String resultStarPng = 'assets/images/result_star.png';
   static const String starScorePng = 'assets/images/star_score.png';
   static const String splashScreenPng = 'assets/images/splash_screen.png';
+  static const String doorPng = 'assets/images/door.png';
+  static const String emptyHistoryPng = 'assets/images/empty_history.png';
   static const String aiBotWaitingGif = 'assets/images/ai_bot_waiting.gif';
   static const String resultLoadingGif = 'assets/images/result_loading.gif';
   static const String backgroundAudioMp3 = 'assets/audios/background.mp3';
@@ -46,6 +48,8 @@ class AppAssets {
     avatarPandaPng,
     avatarCatPng,
     avatarBunnyPng,
+    doorPng,
+    emptyHistoryPng,
     emptyRoomPng,
     coOpRoomModePng,
     soloRoomModePng,

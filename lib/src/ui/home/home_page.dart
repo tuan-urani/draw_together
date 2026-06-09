@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import 'package:draw_together/src/core/audio/app_audio_tap.dart';
+import 'package:draw_together/src/core/model/game_history_entry.dart';
 import 'package:draw_together/src/core/model/game_room.dart';
 import 'package:draw_together/src/extensions/int_extensions.dart';
 import 'package:draw_together/src/locale/locale_key.dart';
@@ -34,6 +36,7 @@ class _HomePageState extends State<HomePage> {
     _bloc = Get.find<HomeBloc>();
     _displayNameController = TextEditingController();
     _bloc.loadProfile();
+    _bloc.loadRecentGames();
   }
 
   @override
@@ -68,11 +71,16 @@ class _HomePageState extends State<HomePage> {
           final activeRoom = state.activeRoom;
           if (activeRoom != null) {
             final roomId = activeRoom.id;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
               if (!mounted) return;
 
               _bloc.clearActiveRoom();
-              Get.toNamed(AppPages.roomLobby, arguments: {'roomId': roomId});
+              await Get.toNamed(
+                AppPages.roomLobby,
+                arguments: {'roomId': roomId},
+              );
+              if (!mounted) return;
+              await _bloc.loadRecentGames();
             });
           }
         },
@@ -94,7 +102,7 @@ class _HomePageState extends State<HomePage> {
                       text: TextSpan(
                         children: [
                           TextSpan(
-                            text: 'Draw\n',
+                            text: '${LocaleKey.homeBrandDraw.tr}\n',
                             style: AppStyles.h40(
                               color: PlayfulColors.ink,
                               fontWeight: FontWeight.w900,
@@ -102,7 +110,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextSpan(
-                            text: 'Together!',
+                            text: LocaleKey.homeBrandTogether.tr,
                             style: AppStyles.h40(
                               color: PlayfulColors.blue,
                               fontWeight: FontWeight.w900,
@@ -114,34 +122,20 @@ class _HomePageState extends State<HomePage> {
                     ),
                     Align(
                       alignment: Alignment.topRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Semantics(
-                            button: true,
-                            label: LocaleKey.history.tr,
-                            child: PlayfulIconButton(
-                              icon: Icons.history_rounded,
-                              onTap: () => Get.toNamed(AppPages.history),
-                            ),
-                          ),
-                          4.width,
-                          Semantics(
-                            button: true,
-                            label: LocaleKey.settingsTitle.tr,
-                            child: PlayfulIconButton(
-                              icon: Icons.settings_rounded,
-                              onTap: () => Get.toNamed(AppPages.settings),
-                            ),
-                          ),
-                        ],
+                      child: Semantics(
+                        button: true,
+                        label: LocaleKey.settingsTitle.tr,
+                        child: PlayfulIconButton(
+                          icon: Icons.settings_rounded,
+                          onTap: _openSettings,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 16.height,
                 Text(
-                  'Draw, challenge, have fun!',
+                  LocaleKey.homeTagline.tr,
                   textAlign: TextAlign.center,
                   style: AppStyles.h4(
                     color: PlayfulColors.ink,
@@ -193,6 +187,13 @@ class _HomePageState extends State<HomePage> {
                 _JoinRoomCard(
                   enabled: !state.isRoomActionLoading,
                   onTap: _showJoinRoomDialog,
+                ),
+                14.height,
+                _RecentGamesCard(
+                  entries: state.recentGames,
+                  isLoading: state.isRecentGamesLoading,
+                  onOpenHistory: _openHistory,
+                  onOpenEntry: _openHistoryEntry,
                 ),
               ],
             ),
@@ -258,8 +259,24 @@ class _HomePageState extends State<HomePage> {
     await _bloc.updateAvatar(avatarAsset);
   }
 
-  void _openRoomBrowser(RoomMode mode) {
-    Get.toNamed(AppPages.roomBrowser, arguments: {'mode': mode});
+  Future<void> _openRoomBrowser(RoomMode mode) async {
+    await Get.toNamed(AppPages.roomBrowser, arguments: {'mode': mode});
+    if (!mounted) return;
+    await _bloc.loadRecentGames();
+  }
+
+  Future<void> _openSettings() async {
+    await Get.toNamed(AppPages.settings);
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _openHistory() {
+    Get.toNamed(AppPages.history);
+  }
+
+  void _openHistoryEntry(GameHistoryEntry entry) {
+    Get.toNamed(AppPages.historyDetail, arguments: {'entry': entry});
   }
 
   String _profileAvatarAsset(String? avatarUrl) {
@@ -682,9 +699,28 @@ class _JoinRoomCard extends StatelessWidget {
         child: SizedBox(
           height: 104,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 0, 24, 0),
+            padding: const EdgeInsets.fromLTRB(16, 0, 24, 0),
             child: Row(
               children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.28),
+                    borderRadius: 18.borderRadiusAll,
+                  ),
+                  child: SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: Center(
+                      child: Image.asset(
+                        AppAssets.doorPng,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+                14.width,
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -729,5 +765,224 @@ class _JoinRoomCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _RecentGamesCard extends StatelessWidget {
+  const _RecentGamesCard({
+    required this.entries,
+    required this.isLoading,
+    required this.onOpenHistory,
+    required this.onOpenEntry,
+  });
+
+  final List<GameHistoryEntry> entries;
+  final bool isLoading;
+  final VoidCallback onOpenHistory;
+  final ValueChanged<GameHistoryEntry> onOpenEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    return PlayfulCard(
+      radius: 20,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: AppAudioTap.wrap(onOpenHistory),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    LocaleKey.recentGames.tr,
+                    style: AppStyles.bodyMedium(
+                      color: PlayfulColors.ink,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: PlayfulColors.ink,
+                  size: 26,
+                ),
+              ],
+            ),
+          ),
+          8.height,
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: CircularProgressIndicator(),
+            )
+          else if (entries.isEmpty)
+            const _EmptyRecentGames()
+          else ...[
+            for (var index = 0; index < entries.length; index++) ...[
+              _RecentGameItem(
+                entry: entries[index],
+                onTap: () => onOpenEntry(entries[index]),
+              ),
+              if (index != entries.length - 1)
+                const Divider(height: 1, color: PlayfulColors.settingsDivider),
+            ],
+            10.height,
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: AppAudioTap.wrap(onOpenHistory),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    LocaleKey.viewAll.tr,
+                    style: AppStyles.bodySmall(
+                      color: PlayfulColors.blue,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  4.width,
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: PlayfulColors.blue,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyRecentGames extends StatelessWidget {
+  const _EmptyRecentGames();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
+      child: Column(
+        children: [
+          Image.asset(
+            AppAssets.emptyHistoryPng,
+            width: 180,
+            height: 92,
+            fit: BoxFit.contain,
+          ),
+          2.height,
+          Text(
+            LocaleKey.emptyRecentGamesTitle.tr,
+            textAlign: TextAlign.center,
+            style: AppStyles.bodyMedium(
+              color: PlayfulColors.ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          4.height,
+          Text(
+            LocaleKey.emptyRecentGamesHint.tr,
+            textAlign: TextAlign.center,
+            style: AppStyles.caption(
+              color: PlayfulColors.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentGameItem extends StatelessWidget {
+  const _RecentGameItem({required this.entry, required this.onTap});
+
+  final GameHistoryEntry entry;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: AppAudioTap.wrap(onTap),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: 10.borderRadiusAll,
+              ),
+              child: SizedBox(
+                width: 42,
+                height: 42,
+                child: ClipRRect(
+                  borderRadius: 10.borderRadiusAll,
+                  child: Image.network(
+                    entry.targetUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: PlayfulColors.muted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            10.width,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.target.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppStyles.bodyMedium(
+                      color: PlayfulColors.ink,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                  2.height,
+                  Text(
+                    _partnerLabel(entry),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppStyles.caption(
+                      color: PlayfulColors.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            8.width,
+            Text(
+              DateFormat(
+                'MMM d, HH:mm',
+              ).format(entry.round.createdAt.toLocal()),
+              style: AppStyles.caption(
+                color: PlayfulColors.muted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _partnerLabel(GameHistoryEntry entry) {
+    final partnerName = entry.partnerName.isEmpty
+        ? LocaleKey.unknownPlayer.tr
+        : entry.partnerName;
+    final key = entry.isCoop
+        ? LocaleKey.historyCoopWith
+        : LocaleKey.historySoloWith;
+    return key.trParams({'name': partnerName});
   }
 }

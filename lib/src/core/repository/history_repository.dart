@@ -13,7 +13,7 @@ class HistoryRepository {
 
   final SupabaseClient _client;
 
-  Future<List<GameHistoryEntry>> listHistory() async {
+  Future<List<GameHistoryEntry>> listHistory({int? limit}) async {
     final user = _requireUser();
     final playerRows = await _client
         .from('room_players')
@@ -27,12 +27,16 @@ class HistoryRepository {
         .toList(growable: false);
     if (roomIds.isEmpty) return const <GameHistoryEntry>[];
 
-    final rounds = await _client
+    var roundsQuery = _client
         .from('rounds')
         .select('*, rooms(*), target_images(*)')
         .filter('room_id', 'in', _inFilter(roomIds))
         .eq('status', RoundStatus.scored.value)
         .order('created_at', ascending: false);
+    if (limit != null) {
+      roundsQuery = roundsQuery.limit(limit);
+    }
+    final rounds = await roundsQuery;
 
     if (rounds.isEmpty) return const <GameHistoryEntry>[];
 

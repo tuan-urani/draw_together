@@ -2,6 +2,9 @@ class LocaleKey {
   LocaleKey._();
 
   static const String homeTitle = 'home_title';
+  static const String homeBrandDraw = 'homeBrandDraw';
+  static const String homeBrandTogether = 'homeBrandTogether';
+  static const String homeTagline = 'homeTagline';
   static const String loginSessionExpires = 'loginSessionExpires';
   static const String success = 'success';
   static const String error = 'error';
@@ -20,6 +23,17 @@ class LocaleKey {
   static const String chooseAvatar = 'chooseAvatar';
   static const String save = 'save';
   static const String saving = 'saving';
+  static const String recentGames = 'recentGames';
+  static const String viewAll = 'viewAll';
+  static const String recentGameFunCats = 'recentGameFunCats';
+  static const String recentGameDinoAdventure = 'recentGameDinoAdventure';
+  static const String recentGameSpaceRace = 'recentGameSpaceRace';
+  static const String recentGameAliceBob = 'recentGameAliceBob';
+  static const String recentGameTom = 'recentGameTom';
+  static const String recentGameJaneMike = 'recentGameJaneMike';
+  static const String recentGameTwoHoursAgo = 'recentGameTwoHoursAgo';
+  static const String recentGameOneDayAgo = 'recentGameOneDayAgo';
+  static const String recentGameTwoDaysAgo = 'recentGameTwoDaysAgo';
   static const String signedInAsGuest = 'signedInAsGuest';
   static const String playerId = 'playerId';
   static const String startWithFriend = 'startWithFriend';
@@ -133,6 +147,8 @@ class LocaleKey {
   static const String unknownPlayer = 'unknownPlayer';
   static const String noHistoryYet = 'noHistoryYet';
   static const String noHistoryHint = 'noHistoryHint';
+  static const String emptyRecentGamesTitle = 'emptyRecentGamesTitle';
+  static const String emptyRecentGamesHint = 'emptyRecentGamesHint';
   static const String settingsTitle = 'settingsTitle';
   static const String settingsSubtitle = 'settingsSubtitle';
   static const String settingsAudio = 'settingsAudio';
@@ -140,6 +156,10 @@ class LocaleKey {
   static const String settingsSoundEffects = 'settingsSoundEffects';
   static const String settingsToggleOn = 'settingsToggleOn';
   static const String settingsSupport = 'settingsSupport';
+  static const String settingsLanguage = 'settingsLanguage';
+  static const String languageEnglish = 'languageEnglish';
+  static const String languageJapanese = 'languageJapanese';
+  static const String languageVietnamese = 'languageVietnamese';
   static const String settingsPrivacyPolicy = 'settingsPrivacyPolicy';
   static const String settingsTermsOfUse = 'settingsTermsOfUse';
   static const String settingsDeleteAccount = 'settingsDeleteAccount';

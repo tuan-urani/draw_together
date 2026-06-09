@@ -11,16 +11,28 @@ Goal: provide the shortest route to create or join a slow drawing room.
 ### 2. UI Structure
 
 - Profile summary with editable display name.
-- Header actions for Settings and History.
+- Header action for Settings.
 - Compact `Create Co-op Room`, `Create Versus Room`, and `Join Room` actions.
+- `Recent Games` card backed by the three newest scored rounds.
+- Empty gallery state when the player has no scored history.
+- Tappable history items, plus header and `View All` navigation.
 - The previous duplicate guest information and empty room-history sections are not displayed.
 
 ### 3. User Flow & Logic
 
 1. Player loads an anonymous profile.
 2. Player optionally edits their display name.
-3. Player opens Settings or History from the header actions.
-4. Player creates a mode-specific room or enters a room code to join.
+3. Player opens Settings from the header action.
+4. Home loads up to three newest matches from `HistoryRepository`.
+5. Player opens a recent match to view its History Detail.
+6. Player opens the full History from the section header or `View All`.
+7. Player creates a mode-specific room or enters a room code to join.
+8. Recent Games reloads when the room or match navigation flow returns to Home.
+
+### 4. Key Dependencies
+
+- `HomeBloc` coordinates profile, room actions, and recent history state.
+- `HistoryRepository` supplies newest-first scored rounds with an optional limit.
 
 ## Settings
 
@@ -28,12 +40,12 @@ Goal: provide the shortest route to create or join a slow drawing room.
 
 ### 1. Description
 
-Goal: let the player customize app audio and access account/support actions.
+Goal: let the player customize app audio and language, and access account/support actions.
 
 ### 2. UI Structure
 
 - Screen: `SettingsPage`
-- Components: settings section card, toggle row, link row, delete account card.
+- Components: settings section card, toggle row, language dropdown row, link row, delete account card.
 - Route: `AppPages.settings`
 
 ### 3. User Flow & Logic
@@ -42,12 +54,15 @@ Goal: let the player customize app audio and access account/support actions.
 2. Settings opens with a back button, title, and subtitle.
 3. Player toggles Background Music; the choice is saved and the current music starts or stops.
 4. Player toggles Sound Effects; the choice is saved and future tap sounds respect it.
-5. Privacy Policy, Terms of Use, and Delete Account are displayed as support/account actions.
+5. Player selects English, Japanese, or Vietnamese; the app updates immediately and saves the choice for future launches.
+6. On the first launch without a saved choice, the app uses the device language for English, Japanese, or Vietnamese and falls back to English for every other language.
+7. Privacy Policy, Terms of Use, and Delete Account are displayed as support/account actions.
 
 ### 4. Key Dependencies
 
 - `AppAudioManager`
 - `AppShared`
+- `TranslationManager`
 
 ## Room Lobby
 

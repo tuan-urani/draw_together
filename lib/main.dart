@@ -1,18 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:draw_together/src/di/register_manager_module.dart';
 import 'package:draw_together/src/locale/translation_manager.dart';
 import 'package:draw_together/src/utils/app_colors.dart';
 import 'package:draw_together/src/utils/app_pages.dart';
+import 'package:draw_together/src/utils/app_shared.dart';
 
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   widgetsBinding.deferFirstFrame();
-  runApp(const App());
+  await registerManagerModule();
+
+  final savedLanguageCode = Get.find<AppShared>().getLanguageCode();
+  final deviceLanguageCode =
+      widgetsBinding.platformDispatcher.locale.languageCode;
+  final initialLocale = TranslationManager.resolveLocale(
+    savedLanguageCode ?? deviceLanguageCode,
+  );
+
+  runApp(App(initialLocale: initialLocale));
 }
 
 class App extends StatelessWidget {
-  const App({super.key});
+  const App({this.initialLocale = TranslationManager.defaultLocale, super.key});
+
+  final Locale initialLocale;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +35,7 @@ class App extends StatelessWidget {
       initialRoute: AppPages.splash,
       getPages: AppPages.pages,
       translations: TranslationManager(),
-      locale: TranslationManager.defaultLocale,
+      locale: initialLocale,
       fallbackLocale: TranslationManager.fallbackLocale,
     );
   }

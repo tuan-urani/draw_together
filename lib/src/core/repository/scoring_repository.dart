@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:draw_together/src/core/model/game_score.dart';
@@ -19,7 +20,10 @@ class ScoringRepository {
   Future<List<GameScore>> scoreRoundScores(String roundId) async {
     final response = await _client.functions.invoke(
       'score-round',
-      body: <String, dynamic>{'roundId': roundId},
+      body: <String, dynamic>{
+        'roundId': roundId,
+        'locale': Get.locale?.languageCode ?? 'en',
+      },
     );
 
     final data = response.data;

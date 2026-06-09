@@ -7,6 +7,8 @@ type ScoreResult = {
   rationale: string[];
 };
 
+type ScoreLocale = "en" | "ja" | "vi";
+
 type TargetColorMetadata = {
   stroke_color?: string | null;
   player1_color?: string | null;
@@ -20,7 +22,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const promptVersion = "slow_similarity_v3_target_palette";
+const promptVersion = "slow_similarity_v4_locale_three_bullets";
 const defaultStrokeColor = "#1F2937";
 const defaultPlayer1Color = "#1F2937";
 const defaultPlayer2Color = "#EF4056";
@@ -58,6 +60,7 @@ Deno.serve(async (req: Request) => {
     if (!roundId || typeof roundId !== "string") {
       return jsonResponse({ error: "roundId is required." }, 400);
     }
+    const scoreLocale = normalizeScoreLocale(body.locale);
 
     const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4.1-mini";
     const round = await fetchRound(supabase, roundId);
@@ -112,6 +115,7 @@ Deno.serve(async (req: Request) => {
         openAiApiKey,
         targetDataUrl,
         targetColors: target,
+        locale: scoreLocale,
       });
 
       return jsonResponse(result);
@@ -125,6 +129,7 @@ Deno.serve(async (req: Request) => {
       openAiApiKey,
       targetDataUrl,
       targetColors: target,
+      locale: scoreLocale,
     });
 
     return jsonResponse(result);
@@ -169,6 +174,7 @@ async function scoreCoopRound({
   openAiApiKey,
   targetDataUrl,
   targetColors,
+  locale,
 }: {
   supabase: ReturnType<typeof createClient>;
   round: Record<string, string>;
@@ -177,6 +183,7 @@ async function scoreCoopRound({
   openAiApiKey: string;
   targetDataUrl: string;
   targetColors: TargetColorMetadata;
+  locale: ScoreLocale;
 }) {
   const submission = await fetchTeamSubmission(supabase, round.id);
   const submissionDataUrl = await downloadAsDataUrl(
@@ -193,6 +200,7 @@ async function scoreCoopRound({
     targetDataUrl,
     submissionDataUrl,
     targetColors,
+    locale,
   });
 
   const { data: judgement, error: judgementError } = await supabase
@@ -202,7 +210,7 @@ async function scoreCoopRound({
       model,
       prompt_version: promptVersion,
       status: "succeeded",
-      raw_response: scoreResult,
+      raw_response: { locale, ...scoreResult },
     })
     .select()
     .single();
@@ -241,6 +249,7 @@ async function scoreVersusRound({
   openAiApiKey,
   targetDataUrl,
   targetColors,
+  locale,
 }: {
   supabase: ReturnType<typeof createClient>;
   round: Record<string, string>;
@@ -248,6 +257,7 @@ async function scoreVersusRound({
   openAiApiKey: string;
   targetDataUrl: string;
   targetColors: TargetColorMetadata;
+  locale: ScoreLocale;
 }) {
   const submissions = await fetchPlayerSubmissions(supabase, round.id);
   if (submissions.length < 2) {
@@ -269,6 +279,7 @@ async function scoreVersusRound({
       targetDataUrl,
       submissionDataUrl,
       targetColors,
+      locale,
     });
 
     scoredSubmissions.push({ submission, result });
@@ -289,6 +300,7 @@ async function scoreVersusRound({
       prompt_version: `${promptVersion}_versus`,
       status: "succeeded",
       raw_response: scoredSubmissions.map((entry) => ({
+        locale,
         submissionId: entry.submission.id,
         userId: entry.submission.user_id,
         ...entry.result,
@@ -483,6 +495,21 @@ function paletteInstructionFor(
   return `For versus, target and submission should use the same stroke color (${strokeColor}); compare structure and completeness.`;
 }
 
+function normalizeScoreLocale(value: unknown): ScoreLocale {
+  const locale = String(value ?? "").trim().toLowerCase();
+  if (locale.startsWith("ja")) return "ja";
+  if (locale.startsWith("vi")) return "vi";
+  return "en";
+}
+
+function rationaleLanguageInstructionFor(locale: ScoreLocale): string {
+  return {
+    en: "Write all rationale items in English.",
+    ja: "Write all rationale items in Japanese.",
+    vi: "Write all rationale items in Vietnamese.",
+  }[locale];
+}
+
 async function scoreWithOpenAi({
   apiKey,
   model,
@@ -490,6 +517,7 @@ async function scoreWithOpenAi({
   targetDataUrl,
   submissionDataUrl,
   targetColors,
+  locale,
 }: {
   apiKey: string;
   model: string;
@@ -497,8 +525,10 @@ async function scoreWithOpenAi({
   targetDataUrl: string;
   submissionDataUrl: string;
   targetColors: TargetColorMetadata;
+  locale: ScoreLocale;
 }): Promise<ScoreResult> {
   const paletteInstruction = paletteInstructionFor(mode, targetColors);
+  const rationaleLanguageInstruction = rationaleLanguageInstructionFor(locale);
   const submissionLabel = mode === "coop"
     ? "the combined team drawing"
     : "one player's drawing";
@@ -520,7 +550,7 @@ async function scoreWithOpenAi({
             {
               type: "input_text",
               text:
-                `Image 1 is the target. Image 2 is ${submissionLabel}. Return the similarity score, confidence, and 3 to 5 concise rationale bullet points as a string array. Each rationale item should explain one concrete visual reason for the score.`,
+                `Image 1 is the target. Image 2 is ${submissionLabel}. Return the similarity score, confidence, and exactly 3 concise rationale bullet points as a string array. Each rationale item should explain one concrete visual reason for the score. ${rationaleLanguageInstruction}`,
             },
             { type: "input_image", image_url: targetDataUrl },
             { type: "input_image", image_url: submissionDataUrl },
@@ -541,7 +571,7 @@ async function scoreWithOpenAi({
               rationale: {
                 type: "array",
                 minItems: 3,
-                maxItems: 5,
+                maxItems: 3,
                 items: { type: "string" },
               },
             },

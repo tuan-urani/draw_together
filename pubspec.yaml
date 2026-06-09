@@ -73,6 +73,7 @@ dev_dependencies:
   retrofit_generator: ^10.2.6
   json_serializable: ^6.14.0
   flutter_native_splash: ^2.4.7
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -105,6 +106,8 @@ flutter:
     - assets/images/splash_screen.png
     - assets/images/ai_bot_waiting.gif
     - assets/images/result_loading.gif
+    - assets/images/door.png
+    - assets/images/empty_history.png
     - assets/images/avatars/
     - assets/audios/background.mp3
     - assets/audios/button_tap.mp3
@@ -147,3 +150,21 @@ flutter_native_splash:
   ios_content_mode: scaleAspectFill
   android_12:
     color: "#F7FBFF"
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/app_icon.png
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/images/app_icon.png
+    background_color: "#0879F9"
+    theme_color: "#0879F9"
+  windows:
+    generate: true
+    image_path: assets/images/app_icon.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/images/app_icon.png
