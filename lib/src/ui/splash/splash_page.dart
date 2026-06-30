@@ -22,6 +22,8 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
+  static bool _didReleaseFirstFrame = false;
+
   late final AnimationController _loadingController;
   late final Animation<double> _progressAnimation;
   bool _didPrepareFirstFrame = false;
@@ -59,7 +61,10 @@ class _SplashPageState extends State<SplashPage>
     try {
       await precacheImage(const AssetImage(AppAssets.splashScreenPng), context);
     } finally {
-      WidgetsBinding.instance.allowFirstFrame();
+      if (!_didReleaseFirstFrame) {
+        WidgetsBinding.instance.allowFirstFrame();
+        _didReleaseFirstFrame = true;
+      }
     }
   }
 

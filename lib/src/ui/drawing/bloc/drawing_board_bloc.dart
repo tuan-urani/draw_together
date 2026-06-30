@@ -745,6 +745,7 @@ class DrawingBoardBloc extends Cubit<DrawingBoardState> {
       'similarity_score': score.similarityScore,
       'winner': score.winner,
       'rationale': score.rationale,
+      'rationale_localized': score.rationaleLocalizedFallback,
       'created_at': score.createdAt.toIso8601String(),
     };
   }

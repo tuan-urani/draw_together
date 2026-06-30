@@ -1,4 +1,4 @@
-package com.urani.drawtogether.draw_together
+package com.urani.drawtogether
 
 import io.flutter.embedding.android.FlutterActivity
 

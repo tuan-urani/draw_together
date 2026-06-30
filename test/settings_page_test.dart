@@ -133,6 +133,43 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('settings delete account opens confirmation dialog', (
+    tester,
+  ) async {
+    Get.testMode = true;
+    await tester.binding.setSurfaceSize(const Size(390, 1000));
+
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(null);
+      Get.reset();
+    });
+
+    await tester.pumpWidget(
+      GetMaterialApp(
+        translations: TranslationManager(),
+        locale: TranslationManager.defaultLocale,
+        fallbackLocale: TranslationManager.fallbackLocale,
+        home: const SettingsPage(),
+      ),
+    );
+
+    await tester.tap(find.text('Delete Account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete account?'), findsOneWidget);
+    expect(
+      find.textContaining('This deletes your account and game data.'),
+      findsOneWidget,
+    );
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete account?'), findsNothing);
+  });
 }
 
 class _WebViewRouteProbe extends StatelessWidget {

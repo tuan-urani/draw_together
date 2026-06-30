@@ -45,7 +45,7 @@ Goal: let the player customize app audio and language, and access account/suppor
 ### 2. UI Structure
 
 - Screen: `SettingsPage`
-- Components: settings section card, toggle row, language dropdown row, link row, delete account card.
+- Components: settings section card, toggle row, language dropdown row, link row, delete account card, delete confirmation dialog.
 - Route: `AppPages.settings`
 
 ### 3. User Flow & Logic
@@ -56,13 +56,18 @@ Goal: let the player customize app audio and language, and access account/suppor
 4. Player toggles Sound Effects; the choice is saved and future tap sounds respect it.
 5. Player selects English, Japanese, or Vietnamese; the app updates immediately and saves the choice for future launches.
 6. On the first launch without a saved choice, the app uses the device language for English, Japanese, or Vietnamese and falls back to English for every other language.
-7. Privacy Policy, Terms of Use, and Delete Account are displayed as support/account actions.
+7. Player opens Privacy Policy or Terms of Use in the in-app web view.
+8. Player taps Delete Account and confirms the destructive action.
+9. The app invokes the `delete-account` Edge Function, signs out locally, and returns to Splash.
+10. Splash prepares a fresh anonymous session and profile for the next account.
 
 ### 4. Key Dependencies
 
 - `AppAudioManager`
 - `AppShared`
+- `AuthRepository`
 - `TranslationManager`
+- Supabase Edge Function `delete-account`
 
 ## Room Lobby
 

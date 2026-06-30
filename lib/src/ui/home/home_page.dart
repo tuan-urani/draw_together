@@ -89,114 +89,130 @@ class _HomePageState extends State<HomePage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Stack(
-                  alignment: Alignment.topCenter,
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '${LocaleKey.homeBrandDraw.tr}\n',
-                            style: AppStyles.h40(
-                              color: PlayfulColors.ink,
-                              fontWeight: FontWeight.w900,
-                              height: 0.95,
+                    Stack(
+                      alignment: Alignment.topCenter,
+                      children: [
+                        RichText(
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '${LocaleKey.homeBrandDraw.tr}\n',
+                                style: AppStyles.h40(
+                                  color: PlayfulColors.ink,
+                                  fontWeight: FontWeight.w900,
+                                  height: 0.95,
+                                ),
+                              ),
+                              TextSpan(
+                                text: LocaleKey.homeBrandTogether.tr,
+                                style: AppStyles.h40(
+                                  color: PlayfulColors.blue,
+                                  fontWeight: FontWeight.w900,
+                                  height: 0.95,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: Semantics(
+                            button: true,
+                            label: LocaleKey.settingsTitle.tr,
+                            child: PlayfulIconButton(
+                              icon: Icons.settings_rounded,
+                              onTap: _openSettings,
                             ),
                           ),
-                          TextSpan(
-                            text: LocaleKey.homeBrandTogether.tr,
-                            style: AppStyles.h40(
-                              color: PlayfulColors.blue,
-                              fontWeight: FontWeight.w900,
-                              height: 0.95,
+                        ),
+                      ],
+                    ),
+                    16.height,
+                    Text(
+                      LocaleKey.homeTagline.tr,
+                      textAlign: TextAlign.center,
+                      style: AppStyles.h4(
+                        color: PlayfulColors.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    16.height,
+                    _ProfileSummary(
+                      state: state,
+                      avatarAsset: _profileAvatarAsset(
+                        state.profile?.avatarUrl,
+                      ),
+                      onAvatarTap: state.isSaving
+                          ? null
+                          : () => _showAvatarPickerDialog(
+                              _profileAvatarAsset(state.profile?.avatarUrl),
+                            ),
+                      onEdit: state.isSaving ? null : _showDisplayNameDialog,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 24, 18, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _ModeActionCard(
+                              title: LocaleKey.coopModeTitle.tr,
+                              characterAsset: AppAssets.characterCardLeftPng,
+                              icon: Icons.groups_rounded,
+                              gradient: PlayfulColors.coopCardGradient,
+                              accentColor: PlayfulColors.blue,
+                              onTap: state.isRoomActionLoading
+                                  ? null
+                                  : () => _openRoomBrowser(RoomMode.coop),
+                            ),
+                          ),
+                          16.width,
+                          Expanded(
+                            child: _ModeActionCard(
+                              title: LocaleKey.soloModeTitle.tr,
+                              characterAsset: AppAssets.characterCardRightPng,
+                              icon: Icons.bolt_rounded,
+                              gradient: PlayfulColors.soloCardGradient,
+                              accentColor: PlayfulColors.purpleDark,
+                              onTap: state.isRoomActionLoading
+                                  ? null
+                                  : () => _openRoomBrowser(RoomMode.versus),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Semantics(
-                        button: true,
-                        label: LocaleKey.settingsTitle.tr,
-                        child: PlayfulIconButton(
-                          icon: Icons.settings_rounded,
-                          onTap: _openSettings,
-                        ),
+                      22.height,
+                      _JoinRoomCard(
+                        enabled: !state.isRoomActionLoading,
+                        onTap: _showJoinRoomDialog,
                       ),
-                    ),
-                  ],
-                ),
-                16.height,
-                Text(
-                  LocaleKey.homeTagline.tr,
-                  textAlign: TextAlign.center,
-                  style: AppStyles.h4(
-                    color: PlayfulColors.ink,
-                    fontWeight: FontWeight.w700,
+                      14.height,
+                      _RecentGamesCard(
+                        entries: state.recentGames,
+                        isLoading: state.isRecentGamesLoading,
+                        onOpenHistory: _openHistory,
+                        onOpenEntry: _openHistoryEntry,
+                      ),
+                    ],
                   ),
                 ),
-                36.height,
-                _ProfileSummary(
-                  state: state,
-                  avatarAsset: _profileAvatarAsset(state.profile?.avatarUrl),
-                  onAvatarTap: state.isSaving
-                      ? null
-                      : () => _showAvatarPickerDialog(
-                          _profileAvatarAsset(state.profile?.avatarUrl),
-                        ),
-                  onEdit: state.isSaving ? null : _showDisplayNameDialog,
-                ),
-                24.height,
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ModeActionCard(
-                        title: LocaleKey.coopModeTitle.tr,
-                        characterAsset: AppAssets.characterCardLeftPng,
-                        icon: Icons.groups_rounded,
-                        gradient: PlayfulColors.coopCardGradient,
-                        accentColor: PlayfulColors.blue,
-                        onTap: state.isRoomActionLoading
-                            ? null
-                            : () => _openRoomBrowser(RoomMode.coop),
-                      ),
-                    ),
-                    16.width,
-                    Expanded(
-                      child: _ModeActionCard(
-                        title: LocaleKey.soloModeTitle.tr,
-                        characterAsset: AppAssets.characterCardRightPng,
-                        icon: Icons.bolt_rounded,
-                        gradient: PlayfulColors.soloCardGradient,
-                        accentColor: PlayfulColors.purpleDark,
-                        onTap: state.isRoomActionLoading
-                            ? null
-                            : () => _openRoomBrowser(RoomMode.versus),
-                      ),
-                    ),
-                  ],
-                ),
-                22.height,
-                _JoinRoomCard(
-                  enabled: !state.isRoomActionLoading,
-                  onTap: _showJoinRoomDialog,
-                ),
-                14.height,
-                _RecentGamesCard(
-                  entries: state.recentGames,
-                  isLoading: state.isRecentGamesLoading,
-                  onOpenHistory: _openHistory,
-                  onOpenEntry: _openHistoryEntry,
-                ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),

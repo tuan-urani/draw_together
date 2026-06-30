@@ -168,4 +168,10 @@ final Map<String, String> viVn = <String, String>{
   LocaleKey.settingsDeleteAccount: 'Xóa tài khoản',
   LocaleKey.settingsDeleteAccountSubtitle:
       'Xóa vĩnh viễn toàn bộ dữ liệu tài khoản.',
+  LocaleKey.settingsDeleteAccountConfirmTitle: 'Xóa tài khoản?',
+  LocaleKey.settingsDeleteAccountConfirmMessage:
+      'Tài khoản và dữ liệu chơi sẽ bị xóa.\nApp sẽ tạo tài khoản mới.',
+  LocaleKey.settingsDeleteAccountConfirmAction: 'Xóa',
+  LocaleKey.settingsDeleteAccountFailed:
+      'Không thể xóa tài khoản. Vui lòng thử lại.',
 };

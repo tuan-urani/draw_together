@@ -164,4 +164,9 @@ final Map<String, String> jaJp = <String, String>{
   LocaleKey.settingsTermsOfUse: '利用規約',
   LocaleKey.settingsDeleteAccount: 'アカウント削除',
   LocaleKey.settingsDeleteAccountSubtitle: 'すべてのアカウントデータを完全に削除します。',
+  LocaleKey.settingsDeleteAccountConfirmTitle: 'アカウントを削除しますか？',
+  LocaleKey.settingsDeleteAccountConfirmMessage:
+      'アカウントとプレイデータを削除します。\n新しいアカウントを作成します。',
+  LocaleKey.settingsDeleteAccountConfirmAction: '削除',
+  LocaleKey.settingsDeleteAccountFailed: 'アカウントを削除できませんでした。もう一度お試しください。',
 };

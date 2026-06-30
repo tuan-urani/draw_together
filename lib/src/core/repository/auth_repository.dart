@@ -13,6 +13,23 @@ class AuthRepository {
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
+  Future<void> deleteCurrentAccount() async {
+    if (currentSession == null) {
+      throw const AuthException('Missing authenticated session.');
+    }
+
+    try {
+      await _client.functions.invoke('delete-account');
+    } on FunctionException catch (error) {
+      throw AuthException(
+        _functionErrorMessage(error),
+        statusCode: '${error.status}',
+      );
+    }
+
+    await signOut();
+  }
+
   Future<User> ensureAnonymousSession({String? displayName}) async {
     final existingUser = currentUser;
     if (existingUser != null) return existingUser;
@@ -37,5 +54,21 @@ class AuthRepository {
 
   Future<void> signOut() {
     return _client.auth.signOut();
+  }
+
+  String _functionErrorMessage(FunctionException error) {
+    final details = error.details;
+    if (details is Map<String, dynamic>) {
+      final message = details['error'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+    }
+
+    if (details is String && details.trim().isNotEmpty) {
+      return details.trim();
+    }
+
+    return error.reasonPhrase ?? 'Could not delete account.';
   }
 }

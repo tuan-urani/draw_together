@@ -333,7 +333,9 @@ class _DrawingBoardPageState extends State<DrawingBoardPage> {
                   maxHeight: min(240, MediaQuery.sizeOf(context).height * 0.34),
                 ),
                 child: SingleChildScrollView(
-                  child: _ScoreReasonBullets(reasons: score.rationale),
+                  child: _ScoreReasonBullets(
+                    reasons: score.rationaleForLocale(Get.locale?.languageCode),
+                  ),
                 ),
               ),
             ],

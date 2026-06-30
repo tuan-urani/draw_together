@@ -130,7 +130,9 @@ class _CoopHistoryDetail extends StatelessWidget {
           score: (score?.teamScore ?? score?.similarityScore) ?? 0,
           color: PlayfulColors.blue,
           icon: Icons.groups_rounded,
-          reasons: score?.rationale ?? const <String>[],
+          reasons:
+              score?.rationaleForLocale(Get.locale?.languageCode) ??
+              const <String>[],
         ),
         14.height,
         _SubmissionImageCard(
@@ -200,7 +202,11 @@ class _SoloHistoryDetail extends StatelessWidget {
               ),
               16.height,
               const Divider(height: 1, color: PlayfulColors.settingsDivider),
-              _WhyScoreRow(reasons: playerScore?.rationale ?? const <String>[]),
+              _WhyScoreRow(
+                reasons:
+                    playerScore?.rationaleForLocale(Get.locale?.languageCode) ??
+                    const <String>[],
+              ),
             ],
           ),
         ),

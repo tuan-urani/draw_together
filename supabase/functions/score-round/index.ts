@@ -4,7 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 type ScoreResult = {
   score: number;
   confidence: number;
-  rationale: string[];
+  rationale: LocalizedRationale;
+};
+
+type LocalizedRationale = {
+  en: string[];
+  ja: string[];
+  vi: string[];
 };
 
 type ScoreLocale = "en" | "ja" | "vi";
@@ -22,7 +28,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const promptVersion = "slow_similarity_v4_locale_three_bullets";
+const promptVersion = "slow_similarity_v5_localized_rationale";
 const defaultStrokeColor = "#1F2937";
 const defaultPlayer1Color = "#1F2937";
 const defaultPlayer2Color = "#EF4056";
@@ -200,7 +206,6 @@ async function scoreCoopRound({
     targetDataUrl,
     submissionDataUrl,
     targetColors,
-    locale,
   });
 
   const { data: judgement, error: judgementError } = await supabase
@@ -225,7 +230,8 @@ async function scoreCoopRound({
       team_score: scoreResult.score,
       similarity_score: scoreResult.score,
       winner: false,
-      rationale: scoreResult.rationale,
+      rationale: scoreResult.rationale.en,
+      rationale_localized: scoreResult.rationale,
     })
     .select()
     .single();
@@ -279,7 +285,6 @@ async function scoreVersusRound({
       targetDataUrl,
       submissionDataUrl,
       targetColors,
-      locale,
     });
 
     scoredSubmissions.push({ submission, result });
@@ -317,7 +322,8 @@ async function scoreVersusRound({
     team_score: null,
     similarity_score: entry.result.score,
     winner: winnerCount === 1 && entry.result.score === maxScore,
-    rationale: entry.result.rationale,
+    rationale: entry.result.rationale.en,
+    rationale_localized: entry.result.rationale,
   }));
 
   const { data: scores, error: scoreError } = await supabase
@@ -502,14 +508,6 @@ function normalizeScoreLocale(value: unknown): ScoreLocale {
   return "en";
 }
 
-function rationaleLanguageInstructionFor(locale: ScoreLocale): string {
-  return {
-    en: "Write all rationale items in English.",
-    ja: "Write all rationale items in Japanese.",
-    vi: "Write all rationale items in Vietnamese.",
-  }[locale];
-}
-
 async function scoreWithOpenAi({
   apiKey,
   model,
@@ -517,7 +515,6 @@ async function scoreWithOpenAi({
   targetDataUrl,
   submissionDataUrl,
   targetColors,
-  locale,
 }: {
   apiKey: string;
   model: string;
@@ -525,10 +522,8 @@ async function scoreWithOpenAi({
   targetDataUrl: string;
   submissionDataUrl: string;
   targetColors: TargetColorMetadata;
-  locale: ScoreLocale;
 }): Promise<ScoreResult> {
   const paletteInstruction = paletteInstructionFor(mode, targetColors);
-  const rationaleLanguageInstruction = rationaleLanguageInstructionFor(locale);
   const submissionLabel = mode === "coop"
     ? "the combined team drawing"
     : "one player's drawing";
@@ -550,7 +545,7 @@ async function scoreWithOpenAi({
             {
               type: "input_text",
               text:
-                `Image 1 is the target. Image 2 is ${submissionLabel}. Return the similarity score, confidence, and exactly 3 concise rationale bullet points as a string array. Each rationale item should explain one concrete visual reason for the score. ${rationaleLanguageInstruction}`,
+                `Image 1 is the target. Image 2 is ${submissionLabel}. Return the similarity score, confidence, and a rationale object with exactly three keys: en, ja, vi. Each key must contain exactly 3 concise rationale bullet points in the matching language. Keep the meaning aligned across all three languages.`,
             },
             { type: "input_image", image_url: targetDataUrl },
             { type: "input_image", image_url: submissionDataUrl },
@@ -569,17 +564,36 @@ async function scoreWithOpenAi({
               score: { type: "integer", minimum: 0, maximum: 100 },
               confidence: { type: "number", minimum: 0, maximum: 1 },
               rationale: {
-                type: "array",
-                minItems: 3,
-                maxItems: 3,
-                items: { type: "string" },
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  en: {
+                    type: "array",
+                    minItems: 3,
+                    maxItems: 3,
+                    items: { type: "string" },
+                  },
+                  ja: {
+                    type: "array",
+                    minItems: 3,
+                    maxItems: 3,
+                    items: { type: "string" },
+                  },
+                  vi: {
+                    type: "array",
+                    minItems: 3,
+                    maxItems: 3,
+                    items: { type: "string" },
+                  },
+                },
+                required: ["en", "ja", "vi"],
               },
             },
             required: ["score", "confidence", "rationale"],
           },
         },
       },
-      max_output_tokens: 300,
+      max_output_tokens: 700,
     }),
   });
 
@@ -597,11 +611,34 @@ async function scoreWithOpenAi({
   return {
     score: parsed.score,
     confidence: Number(parsed.confidence),
-    rationale: rationaleFromParsedValue(parsed.rationale),
+    rationale: localizedRationaleFromParsedValue(parsed.rationale),
   };
 }
 
-function rationaleFromParsedValue(value: unknown): string[] {
+function localizedRationaleFromParsedValue(value: unknown): LocalizedRationale {
+  const fallback = rationaleListFromParsedValue(value);
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const en = rationaleListFromParsedValue(record.en);
+    const ja = rationaleListFromParsedValue(record.ja);
+    const vi = rationaleListFromParsedValue(record.vi);
+    const primary = en.length > 0 ? en : fallback;
+    return {
+      en: en.length > 0 ? en : primary,
+      ja: ja.length > 0 ? ja : primary,
+      vi: vi.length > 0 ? vi : primary,
+    };
+  }
+
+  return {
+    en: fallback,
+    ja: fallback,
+    vi: fallback,
+  };
+}
+
+function rationaleListFromParsedValue(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
       .map((item) => String(item).trim())

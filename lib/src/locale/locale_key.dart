@@ -165,4 +165,12 @@ class LocaleKey {
   static const String settingsDeleteAccount = 'settingsDeleteAccount';
   static const String settingsDeleteAccountSubtitle =
       'settingsDeleteAccountSubtitle';
+  static const String settingsDeleteAccountConfirmTitle =
+      'settingsDeleteAccountConfirmTitle';
+  static const String settingsDeleteAccountConfirmMessage =
+      'settingsDeleteAccountConfirmMessage';
+  static const String settingsDeleteAccountConfirmAction =
+      'settingsDeleteAccountConfirmAction';
+  static const String settingsDeleteAccountFailed =
+      'settingsDeleteAccountFailed';
 }

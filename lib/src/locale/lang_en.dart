@@ -125,7 +125,7 @@ final Map<String, String> enUs = <String, String>{
   LocaleKey.whyThisScore: 'Why this score?',
   LocaleKey.aiAnalysisFeedback: 'AI analysis & feedback',
   LocaleKey.yourDrawing: 'Your Drawing',
-  LocaleKey.aiReviewingArtwork: 'AI Reviewing',
+  LocaleKey.aiReviewingArtwork: 'AI Analyzing',
   LocaleKey.comparingShapes: 'Comparing shapes...',
   LocaleKey.tapToSeeWhy: 'Tap to see why',
   LocaleKey.teamScore: 'Team Score',
@@ -166,5 +166,11 @@ final Map<String, String> enUs = <String, String>{
   LocaleKey.settingsTermsOfUse: 'Terms of Use',
   LocaleKey.settingsDeleteAccount: 'Delete Account',
   LocaleKey.settingsDeleteAccountSubtitle:
-      'Permanently remove all account data.',
+      'Permanently remove all data.',
+  LocaleKey.settingsDeleteAccountConfirmTitle: 'Delete account?',
+  LocaleKey.settingsDeleteAccountConfirmMessage:
+      'This deletes your account and game data.\nA new account will be created.',
+  LocaleKey.settingsDeleteAccountConfirmAction: 'Delete',
+  LocaleKey.settingsDeleteAccountFailed:
+      'Could not delete account. Please try again.',
 };

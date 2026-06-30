@@ -7,6 +7,7 @@ class GameScore {
     required this.winner,
     required this.createdAt,
     this.rationale = const <String>[],
+    this.rationaleLocalized = const <String, List<String>>{},
     this.userId,
     this.teamScore,
   });
@@ -19,6 +20,7 @@ class GameScore {
   final int similarityScore;
   final bool winner;
   final List<String> rationale;
+  final Map<String, List<String>> rationaleLocalized;
   final DateTime createdAt;
 
   factory GameScore.fromJson(Map<String, dynamic> json) {
@@ -32,14 +34,29 @@ class GameScore {
       similarityScore:
           json['similarity_score'] as int? ?? json['similarityScore'] as int,
       winner: json['winner'] as bool? ?? false,
-      rationale: _rationaleFromJson(json['rationale']),
+      rationale: _rationaleFallbackFromJson(json['rationale']),
+      rationaleLocalized: _rationaleLocalizedFromJson(
+        json['rationale_localized'] ?? json['rationaleLocalized'],
+      ),
       createdAt: DateTime.parse(
         json['created_at'] as String? ?? json['createdAt'] as String,
       ),
     );
   }
 
-  static List<String> _rationaleFromJson(Object? value) {
+  List<String> rationaleForLocale(String? languageCode) {
+    final locale = _normalizeLanguageCode(languageCode);
+    return rationaleLocalized[locale] ?? rationaleLocalized['en'] ?? rationale;
+  }
+
+  Map<String, List<String>> get rationaleLocalizedFallback {
+    if (rationaleLocalized.isNotEmpty) return rationaleLocalized;
+    return rationale.isEmpty
+        ? const <String, List<String>>{}
+        : <String, List<String>>{'en': rationale};
+  }
+
+  static List<String> _rationaleFallbackFromJson(Object? value) {
     if (value is List) {
       return value
           .map((item) => item.toString().trim())
@@ -53,5 +70,33 @@ class GameScore {
     }
 
     return const <String>[];
+  }
+
+  static Map<String, List<String>> _rationaleLocalizedFromJson(Object? value) {
+    if (value is Map) {
+      final result = <String, List<String>>{};
+      for (final entry in value.entries) {
+        final key = entry.key.toString().trim().toLowerCase();
+        if (key.isEmpty) continue;
+
+        final items = _rationaleFallbackFromJson(entry.value);
+        if (items.isNotEmpty) {
+          result[key] = items;
+        }
+      }
+      if (result.isNotEmpty) return result;
+    }
+
+    final fallback = _rationaleFallbackFromJson(value);
+    return fallback.isEmpty
+        ? const <String, List<String>>{}
+        : <String, List<String>>{'en': fallback};
+  }
+
+  static String _normalizeLanguageCode(String? languageCode) {
+    final code = languageCode?.trim().toLowerCase() ?? '';
+    if (code.startsWith('ja')) return 'ja';
+    if (code.startsWith('vi')) return 'vi';
+    return 'en';
   }
 }

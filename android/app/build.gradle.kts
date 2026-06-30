@@ -1,4 +1,6 @@
 import java.io.File
+import java.io.FileInputStream
+import java.util.Properties
 
 fun loadEnv(name: String): Map<String, String> {
     val envFile = rootProject.file("../" + name)
@@ -17,6 +19,13 @@ fun loadEnv(name: String): Map<String, String> {
 
 val stagingEnv = loadEnv(".env.staging")
 val prodEnv = loadEnv(".env.prod")
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties =
+    Properties().apply {
+        if (keystorePropertiesFile.exists()) {
+            load(FileInputStream(keystorePropertiesFile))
+        }
+    }
 
 plugins {
     id("com.android.application")
@@ -26,7 +35,7 @@ plugins {
 }
 
 android {
-    namespace = "com.urani.drawtogether.draw_together"
+    namespace = "com.urani.drawtogether"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -40,16 +49,28 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.urani.drawtogether.draw_together"
+        applicationId = "com.urani.drawtogether"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storeFile =
+                keystoreProperties.getProperty("storeFile")?.let {
+                    rootProject.file(it)
+                }
+            storePassword = keystoreProperties.getProperty("storePassword")
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
